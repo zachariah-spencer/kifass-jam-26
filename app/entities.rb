@@ -1,3 +1,76 @@
+class Interactable
+  attr_accessor :x, :y
+  attr_reader :w, :h
+
+  def initialize x, y, w, h
+    @x = x
+    @y = y
+    @w = w
+    @h = h
+  end
+
+  def rect
+    { x: @x, y: @y, w: @w, h: @h }
+  end
+
+  def center
+    { x: @x + @w / 2, y: @y + @h / 2 }
+  end
+
+  def contains_point? point
+    point.x >= @x && point.x <= @x + @w && point.y >= @y && point.y <= @y + @h
+  end
+
+  def interaction_text
+    nil
+  end
+
+  def update args
+  end
+
+  def render args, outputs = args.outputs
+  end
+
+  def render_light args, outputs = args.outputs
+  end
+end
+
+class Lamp < Interactable
+  SIZE = 28
+  LIGHT_SIZE = 420
+
+  def initialize x, y
+    super(x, y, SIZE, SIZE)
+  end
+
+  def interaction_text
+    "Dim firelight shines through the glass."
+  end
+
+  def render args, outputs = args.outputs
+    outputs.sprites << rect.merge(path: "sprites/circle/yellow.png", **Render.color(:brass))
+    outputs.sprites << {
+      x: @x + 8,
+      y: @y + 8,
+      w: 12,
+      h: 12,
+      path: "sprites/circle/yellow.png",
+      **Render.color(:flame)
+    }
+  end
+
+  def render_light args, outputs = args.outputs
+    outputs.sprites << center.merge(
+      path: "sprites/mask.png",
+      w: LIGHT_SIZE,
+      h: LIGHT_SIZE,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      blendmode: Render::HOLE_PUNCH_BLENDMODE
+    )
+  end
+end
+
 class Player
   SIZE = 34
   SPEED = 4.5

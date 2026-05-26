@@ -48,7 +48,6 @@ class TitleScene < BaseScene
   def render
     args.outputs.sprites << Render.fullscreen(:void)
     args.outputs.labels << Render.label(640, 438, "EPITHET", :ash, size_enum: 8, alignment_enum: 1)
-    args.outputs.labels << Render.label(640, 364, "", :ash, size_enum: 1, alignment_enum: 1)
     args.outputs.labels << Render.label(640, 284, "E / Enter / Click to begin", :ember, size_enum: 2, alignment_enum: 1)
     args.outputs.labels << Render.label(640, 52, "WASD or arrows move. R resets. Esc returns here.", :ash, size_enum: -1, alignment_enum: 1)
   end

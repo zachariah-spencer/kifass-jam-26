@@ -1,7 +1,20 @@
-* EXCEPTION: uninitialized constant Render::HEIGHT
+* EXCEPTION:
+* ERROR: :each method missing on ~Class~.
+
+#+begin_src ~Class#inspect~
+NIL
+#+end_src ~Class#inspect~
+
+
+
+The method named
+  :each
+doesn't exist on [NilClass].
+
+(suggestions above)
 ** Backtrace:
-*** app/rendering.rb:30:in fullscreen
-*** app/scenes.rb:49:in render
-*** app/scenes.rb:39:in tick
+*** app/game.rb:33:in render_lit_scene
+*** app/game.rb:24:in render
+*** app/scenes.rb:73:in tick
 *** app/root_scene.rb:23:in tick
 *** app/main.rb:12:in tick

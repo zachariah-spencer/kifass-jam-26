@@ -15,6 +15,8 @@ module Render
     wall: { r: 26, g: 26, b: 34 },
     ash: { r: 170, g: 170, b: 165 },
     ember: { r: 210, g: 92, b: 54 },
+    brass: { r: 154, g: 121, b: 74 },
+    flame: { r: 255, g: 188, b: 86 },
     player: { r: 220, g: 218, b: 205 }
   }
 

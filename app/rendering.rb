@@ -1,5 +1,13 @@
 module Render
   TRANSITION_FRAMES = 28
+  HOLE_PUNCH_BLENDMODE = Numeric.compose_blendmode(
+    BLENDFACTOR_ZERO,
+    BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+    BLENDOPERATION_ADD,
+    BLENDFACTOR_ZERO,
+    BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+    BLENDOPERATION_ADD
+  )
 
   PALETTE = {
     void: { r: 10, g: 9, b: 14 },
@@ -27,6 +35,6 @@ module Render
   end
 
   def self.fullscreen color_name = :void, overrides = {}
-    solid({ x: 0, y: 0, w: WIDTH, h: HEIGHT }, color_name, overrides)
+    solid({ x: 0, y: 0, w: Grid.w, h: Grid.h}, color_name, overrides)
   end
 end

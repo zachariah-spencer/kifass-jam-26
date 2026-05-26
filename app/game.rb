@@ -14,16 +14,27 @@ class Game
   end
 
   def render args
-    args.outputs.sprites << Render.fullscreen(:void)
-    render_floor(args)
-    @player.render(args)
+    render_lit_scene(args)
     render_ui(args)
   end
 
-  def render_floor args
+  def render_lit_scene args
+    args.outputs[:scene].set(w: Grid.w, h: Grid.h, background_color: [10, 9, 14, 255])
+    args.outputs[:darkness].set(w: Grid.w, h: Grid.h, background_color: [0, 0, 0, 0])
+
+    render_floor(args, args.outputs[:scene])
+    @player.render(args, args.outputs[:scene])
+    args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
+    @player.render_light(args, args.outputs[:darkness])
+
+    args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }
+    args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :darkness }
+  end
+
+  def render_floor args, outputs = args.outputs
     play_area = { x: 52, y: 58, w: Grid.w - 104, h: Grid.h - 116 }
-    args.outputs.sprites << Render.solid(play_area, :stone, a: 85)
-    args.outputs.borders << play_area.merge(**Render.color(:wall))
+    outputs.sprites << Render.solid(play_area, :stone, a: 85)
+    outputs.borders << play_area.merge(**Render.color(:wall))
   end
 
   def render_ui args

@@ -1,4 +1,5 @@
 require "app/rendering.rb"
+require "app/camera.rb"
 require "app/entities.rb"
 require "app/game.rb"
 require "app/scenes.rb"

@@ -1,20 +1,24 @@
 * EXCEPTION:
-* ERROR: :each method missing on ~Class~.
+* ERROR: :[] method missing on ~GTK::MousePoint~.
 
-#+begin_src ~Class#inspect~
-NIL
-#+end_src ~Class#inspect~
+#+begin_src ~GTK::MousePoint#inspect~
+{:x=>772.0, :y=>614.0, :created_at=>144, :global_created_at=>144}
+#+end_src ~GTK::MousePoint#inspect~
 
 
 
 The method named
-  :each
-doesn't exist on [NilClass].
+  :[]
+with args
+  [:x]
+doesn't exist on [GTK::MousePoint].
 
 (suggestions above)
 ** Backtrace:
-*** app/game.rb:33:in render_lit_scene
-*** app/game.rb:24:in render
-*** app/scenes.rb:73:in tick
+*** app/camera.rb:32:in coord
+*** app/camera.rb:28:in world_point
+*** app/game.rb:43:in handle_interaction
+*** app/game.rb:33:in update
+*** app/scenes.rb:72:in tick
 *** app/root_scene.rb:23:in tick
-*** app/main.rb:12:in tick
+*** app/main.rb:13:in tick

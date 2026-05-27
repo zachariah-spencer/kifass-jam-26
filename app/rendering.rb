@@ -17,7 +17,9 @@ module Render
     ember: { r: 210, g: 92, b: 54 },
     brass: { r: 154, g: 121, b: 74 },
     flame: { r: 255, g: 188, b: 86 },
-    player: { r: 220, g: 218, b: 205 }
+    altar: { r: 82, g: 64, b: 70 },
+    player: { r: 220, g: 218, b: 205 },
+    enemy: { r: 16, g: 14, b: 19 }
   }
 
   def self.rect x, y, w, h

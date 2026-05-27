@@ -26,11 +26,27 @@ class Game
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
   SACRIFICE_SCRAMBLE_SYMBOLS = "!@#$%^&*?+=~[]{}/\\"
+  ENDING_DOOR_OPEN_FRAMES = 1.2.seconds
+  ENDING_PLAYER_FADE_FRAMES = 2.seconds
+  ENDING_PLAYER_WALK_FRAMES = 2.2.seconds
+  ENDING_FADE_BLACK_FRAMES = 1.6.seconds
+  ENDING_CARD_FADE_FRAMES = 1.seconds
+  ENDING_FINAL_TEXT_FRAMES = 4.seconds
+  ENDING_TITLE_FRAMES = 3.5.seconds
+  ENDING_TITLE_CORRUPT_AFTER_FRAMES = 1.1.seconds
+  RESET_HINTS = ["HINT 1", "HINT 2", "HINT 3"]
+  RESET_FADE_OUT_FRAMES = 0.3.seconds
+  RESET_HINT_FADE_FRAMES = 0.35.seconds
+  RESET_HINT_HOLD_FRAMES = 2.seconds
+  RESET_FADE_IN_FRAMES = 0.35.seconds
+  ARCHIVE_PATH_RESET_FADE_FRAMES = 0.2.seconds
   ALTAR_PANEL = { x: 430, y: 190, w: 420, h: 330 }
   ALTAR_WORD_ROW_H = 42
   ROOM_FADE_OUT_FRAMES = 8
   ROOM_FADE_IN_FRAMES = 8
   INTERACTION_RADIUS = 128
+  POINTER_DRAG_DEADZONE = 16
+  POINTER_TAP_MAX_FRAMES = 0.25.seconds
   ARCHIVE_SAFE_PATH_TOLERANCE = 18
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = 56
   BELL_STUN_FRAMES = 3.seconds
@@ -44,9 +60,11 @@ class Game
   SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
   PLAYER_NAME_WORD = "YOUR NAME"
 
+  attr_accessor :player_name
   attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
 
   def initialize
+    @player_name = PLAYER_NAME_WORD
     restart
   end
 
@@ -66,6 +84,7 @@ class Game
     @altar_open = false
     @active_altar = nil
     @room_transition = nil
+    @reset_sequence = nil
     @archive_reset_spawn_id = :from_hall
     @camera.snap_to(@player)
     @interaction_text = nil
@@ -77,7 +96,19 @@ class Game
     @interaction_scramble_order = nil
     @bell_tooltip_shown = false
     @bell_tooltip_until = nil
+    @pointer_gesture = nil
+    @touch_gestures = {}
+    @touch_movement_id = nil
+    @pointer_taps = []
+    @pointer_tap = nil
+    @pointer_drag_vector = nil
     @ending_sequence_triggered = false
+    @ending_phase = nil
+    @ending_phase_started_at = nil
+    @ending_player_start = nil
+    @ending_player_target = nil
+    @ending_title_corruptor = nil
+    @ending_title_started_at = nil
   end
 
   def build_rooms
@@ -194,13 +225,18 @@ class Game
   end
 
   def update args
+    return update_ending_sequence(args) if ending_sequence_triggered?
+    return update_reset_sequence if reset_sequence_active?
+
     update_room_transition
     return if room_transition_active?
 
+    update_pointer_gesture(args)
+    handle_debug_input(args)
     handle_interaction(args)
     update_interaction_text
     interactables.each { |interactable| interactable.update(args) }
-    @player.update(args, current_room.play_area, active_barriers)
+    @player.update(args, current_room.play_area, active_barriers, pointer_movement_vector)
     close_altar_if_player_left_range
     return if reset_player_if_off_archive_path
 
@@ -211,13 +247,13 @@ class Game
   end
 
   def handle_interaction args
-    click = args.inputs.mouse.click
-    return handle_altar_selection(click) if @altar_open && click
+    taps = pointer_taps
+    tap = taps.first
+    return handle_altar_selection(tap) if @altar_open && tap
     return if @altar_open
 
-    interactable = nil
-    if click
-      world_click = @camera.world_point(click)
+    taps.each do |candidate_tap|
+      world_click = @camera.world_point(candidate_tap)
       interactable = nearby_interactables.find { |candidate| candidate.contains_point?(world_click) }
       if interactable
         set_interaction_text(interactable.interact(self))
@@ -225,13 +261,175 @@ class Game
       end
     end
 
-    ring_bell if bell_input?(args, click)
-    set_interaction_text(nil) if click && !bell_input?(args, click)
+    bell_input = bell_input?(args, tap)
+    ring_bell if bell_input
+    set_interaction_text(nil) if tap && !bell_input
+  end
+
+  def update_pointer_gesture args
+    @pointer_taps = []
+    @pointer_drag_vector = nil
+
+    if touch_input_active?(args)
+      @pointer_gesture = nil
+      update_touch_gestures(args)
+      @pointer_tap = @pointer_taps.first
+      return
+    end
+
+    update_mouse_gesture(args)
+    @pointer_tap = @pointer_taps.first
+  end
+
+  def update_mouse_gesture args
+    if args.inputs.mouse.down
+      @pointer_gesture = {
+        start: point_hash(args.inputs.mouse.down),
+        current: point_hash(args.inputs.mouse.down),
+        started_at: Kernel.tick_count,
+        dragged: false
+      }
+    end
+
+    return unless @pointer_gesture
+
+    if args.inputs.mouse.held
+      @pointer_gesture[:current] = point_hash(args.inputs.mouse)
+      update_pointer_drag_state
+      @pointer_drag_vector = pointer_drag_vector if @pointer_gesture[:dragged]
+    end
+
+    return unless args.inputs.mouse.up
+
+    @pointer_gesture[:current] = point_hash(args.inputs.mouse.up)
+    update_pointer_drag_state
+    @pointer_taps << @pointer_gesture[:current] if pointer_tap?
+    @pointer_gesture = nil
+    @pointer_drag_vector = nil
+  end
+
+  def update_touch_gestures args
+    touches = args.inputs.touch || {}
+
+    touches.each do |touch_id, touch|
+      @touch_gestures[touch_id] ||= {
+        start: point_hash(touch),
+        current: point_hash(touch),
+        started_at: Kernel.tick_count,
+        dragged: false
+      }
+
+      gesture = @touch_gestures[touch_id]
+      gesture[:current] = point_hash(touch)
+      update_touch_drag_state(touch_id, gesture)
+    end
+
+    ended_touch_ids = @touch_gestures.keys - touches.keys
+    ended_touch_ids.each do |touch_id|
+      gesture = @touch_gestures[touch_id]
+      @pointer_taps << gesture[:current] if touch_tap?(gesture)
+      @touch_gestures.delete(touch_id)
+      @touch_movement_id = nil if @touch_movement_id == touch_id
+    end
+
+    movement_gesture = @touch_gestures[@touch_movement_id]
+    @pointer_drag_vector = gesture_vector(movement_gesture) if movement_gesture
+  end
+
+  def update_touch_drag_state touch_id, gesture
+    return unless gesture_distance_squared(gesture) >= POINTER_DRAG_DEADZONE * POINTER_DRAG_DEADZONE
+
+    gesture[:dragged] = true
+    @touch_movement_id ||= touch_id
+  end
+
+  def update_pointer_drag_state
+    return unless gesture_distance_squared(@pointer_gesture) >= POINTER_DRAG_DEADZONE * POINTER_DRAG_DEADZONE
+
+    @pointer_gesture[:dragged] = true
+  end
+
+  def pointer_tap?
+    !@pointer_gesture[:dragged] &&
+      Kernel.tick_count - @pointer_gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
+  end
+
+  def touch_tap? gesture
+    !gesture[:dragged] &&
+      Kernel.tick_count - gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
+  end
+
+  def pointer_movement_vector
+    return nil if @altar_open
+
+    @pointer_drag_vector
+  end
+
+  def pointer_drag_vector
+    gesture_vector(@pointer_gesture)
+  end
+
+  def gesture_vector gesture
+    return nil unless gesture
+
+    dx = gesture[:current][:x] - gesture[:start][:x]
+    dy = gesture[:current][:y] - gesture[:start][:y]
+    length = Math.sqrt(dx * dx + dy * dy)
+    return nil if length == 0
+
+    { x: dx / length, y: dy / length }
+  end
+
+  def gesture_distance_squared gesture
+    dx = gesture[:current][:x] - gesture[:start][:x]
+    dy = gesture[:current][:y] - gesture[:start][:y]
+    dx * dx + dy * dy
+  end
+
+  def touch_input_active? args
+    touch_platform? && ((args.inputs.touch && args.inputs.touch.length > 0) || @touch_gestures.length > 0)
+  end
+
+  def touch_platform?
+    DR.platform?(:touch)
+  end
+
+  def pointer_taps
+    @pointer_taps || []
+  end
+
+  def point_hash point
+    return { x: point[:x], y: point[:y] } if point.is_a?(Hash)
+
+    { x: point.x, y: point.y }
+  end
+
+  def clear_pointer_gesture
+    @pointer_gesture = nil
+    @touch_gestures = {}
+    @touch_movement_id = nil
+    @pointer_taps = []
+    @pointer_tap = nil
+    @pointer_drag_vector = nil
+  end
+
+  def handle_debug_input args
+    grant_key_object if args.inputs.keyboard.key_down.y
+  end
+
+  def grant_key_object
+    return set_interaction_text("The key has already been sacrificed.") if word_sacrificed?("KEY")
+
+    @learned_words << "KEY" unless @learned_words.include?("KEY")
+    @learned_object_ids << :archive_key unless @learned_object_ids.include?(:archive_key)
+    @learned_word_sources["KEY"] = :archive_key
+    set_interaction_text("Debug: you remember that this is a KEY.")
   end
 
   def request_room_transition target_room_id, target_spawn_id, source_exit = nil
     return "The way is lost." unless @rooms[target_room_id]
     return nil if room_transition_active?
+    return nil if reset_sequence_active?
 
     @room_transition = {
       target_room_id: target_room_id,
@@ -241,6 +439,7 @@ class Game
       started_at: Kernel.tick_count,
       phase: :fade_out
     }
+    clear_pointer_gesture
     close_altar
     clear_interaction_text
     nil
@@ -248,6 +447,95 @@ class Game
 
   def room_transition_active?
     !!@room_transition
+  end
+
+  def request_give_up_reset
+    request_reset_sequence(:give_up, true)
+  end
+
+  def request_archive_caught_reset
+    request_reset_sequence(:archive_entrance, false)
+  end
+
+  def request_archive_path_reset
+    request_reset_sequence(:archive_entrance, false)
+  end
+
+  def request_reset_sequence destination, show_hint
+    return if reset_sequence_active?
+
+    close_altar
+    clear_interaction_text
+    clear_pointer_gesture
+    @room_transition = nil
+    @player.stop!
+    @reset_sequence = {
+      destination: destination,
+      show_hint: show_hint,
+      hint: RESET_HINTS[rand(RESET_HINTS.length)],
+      phase: :fade_out,
+      started_at: Kernel.tick_count
+    }
+  end
+
+  def reset_sequence_active?
+    !!@reset_sequence
+  end
+
+  def update_reset_sequence
+    return unless @reset_sequence
+
+    elapsed = reset_sequence_elapsed
+    case @reset_sequence[:phase]
+    when :fade_out
+      if elapsed >= reset_fade_out_frames
+        if @reset_sequence[:show_hint]
+          set_reset_sequence_phase(:hint_fade_in)
+        else
+          apply_reset_sequence_destination
+          set_reset_sequence_phase(:fade_in)
+        end
+      end
+    when :hint_fade_in
+      set_reset_sequence_phase(:hint_hold) if elapsed >= RESET_HINT_FADE_FRAMES
+    when :hint_hold
+      set_reset_sequence_phase(:hint_fade_out) if elapsed >= RESET_HINT_HOLD_FRAMES
+    when :hint_fade_out
+      if elapsed >= RESET_HINT_FADE_FRAMES
+        apply_reset_sequence_destination
+        set_reset_sequence_phase(:fade_in)
+      end
+    when :fade_in
+      @reset_sequence = nil if elapsed >= reset_fade_in_frames
+    end
+  end
+
+  def set_reset_sequence_phase phase
+    @reset_sequence[:phase] = phase
+    @reset_sequence[:started_at] = Kernel.tick_count
+  end
+
+  def apply_reset_sequence_destination
+    reset_sequence = @reset_sequence
+    case @reset_sequence[:destination]
+    when :give_up
+      restart
+    when :archive_entrance
+      reset_player_to_archive_entrance
+    end
+    @reset_sequence = reset_sequence
+  end
+
+  def reset_sequence_elapsed
+    Kernel.tick_count - @reset_sequence[:started_at]
+  end
+
+  def reset_fade_out_frames
+    @reset_sequence[:show_hint] ? RESET_FADE_OUT_FRAMES : ARCHIVE_PATH_RESET_FADE_FRAMES
+  end
+
+  def reset_fade_in_frames
+    @reset_sequence[:show_hint] ? RESET_FADE_IN_FRAMES : ARCHIVE_PATH_RESET_FADE_FRAMES
   end
 
   def update_room_transition
@@ -282,7 +570,7 @@ class Game
     @enemy.update(args, @player, current_room, enemy_patrol_points(current_room), word_sacrificed?("BELL"))
 
     if @enemy.room_id == @current_room_id && rects_intersect?(@enemy.rect, @player.rect)
-      restart
+      request_archive_caught_reset
       return true
     end
 
@@ -314,6 +602,14 @@ class Game
 
   def ending_sequence_triggered?
     @ending_sequence_triggered
+  end
+
+  def input_locked?
+    ending_sequence_triggered? || reset_sequence_active?
+  end
+
+  def ending_complete?
+    @ending_phase == :done
   end
 
   def bell_input? args, click
@@ -402,14 +698,19 @@ class Game
     return false unless @current_room_id == :archive
     return false if point_on_archive_safe_path?(@player.center)
 
+    request_archive_path_reset
+    true
+  end
+
+  def reset_player_to_archive_entrance
     spawn = current_room.spawn(@archive_reset_spawn_id)
     @player.x = spawn[:x]
     @player.y = spawn[:y]
     @player.stop!
     close_altar
-    set_interaction_text("The floor forgets your step.")
+    clear_interaction_text
+    @enemy.reset!(:archive, archive_enemy_spawn)
     @camera.snap_to(@player)
-    true
   end
 
   def point_on_archive_safe_path? point
@@ -466,13 +767,13 @@ class Game
     return unless sacrificeable_words.include?(word)
 
     active_altar_id = @active_altar ? @active_altar.id : nil
-    if word == PLAYER_NAME_WORD
-      @sacrificed_words << word unless @sacrificed_words.include?(word)
-      @ending_sequence_triggered = true
+    if player_name_word?(word)
+      @sacrificed_words << PLAYER_NAME_WORD unless @sacrificed_words.include?(PLAYER_NAME_WORD)
       @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
       @active_altar.sacrifice! if @active_altar
       close_altar
       set_interaction_text("You sacrificed #{word}.")
+      start_ending_sequence
       return
     end
 
@@ -532,7 +833,15 @@ class Game
   end
 
   def sanctum_name_sacrifice_words
-    sanctum_final_altar_active? ? [PLAYER_NAME_WORD] : []
+    sanctum_final_altar_active? ? [player_name_word] : []
+  end
+
+  def player_name_word
+    @player_name.to_s.strip.empty? ? PLAYER_NAME_WORD : @player_name
+  end
+
+  def player_name_word? word
+    word == PLAYER_NAME_WORD || word == player_name_word
   end
 
   def sanctum_regular_altar? altar
@@ -628,12 +937,129 @@ class Game
     @interaction_scramble_order = nil
   end
 
-  def update_interaction_text
+  def start_ending_sequence
+    @ending_sequence_triggered = true
+    @ending_phase = :sacrifice_message
+    @ending_phase_started_at = Kernel.tick_count
+    clear_pointer_gesture
+    @player.stop!
+  end
+
+  def update_ending_sequence args
+    update_interaction_text(true)
+    interactables.each { |interactable| interactable.update(args) }
+    @player.stop! unless @ending_phase == :player_walks
+    advance_ending_phase if ending_phase_complete?
+    update_ending_player_walk if @ending_phase == :player_walks
+    @camera.follow(@player) if @ending_phase == :player_walks
+  end
+
+  def advance_ending_phase
+    case @ending_phase
+    when :sacrifice_message
+      clear_interaction_text
+      set_ending_phase(:door_opens)
+    when :door_opens
+      prepare_ending_walk
+      set_ending_phase(:player_walks)
+    when :player_walks
+      set_ending_phase(:player_fades)
+    when :player_fades
+      set_ending_phase(:fade_black)
+    when :fade_black
+      set_ending_phase(:final_text_fade_in)
+    when :final_text_fade_in
+      set_ending_phase(:final_text)
+    when :final_text
+      set_ending_phase(:final_text_fade_out)
+    when :final_text_fade_out
+      @ending_title_corruptor = TextCorruptor.new("EPITHET")
+      @ending_title_started_at = Kernel.tick_count
+      set_ending_phase(:title_fade_in)
+    when :title_fade_in
+      set_ending_phase(:title_card)
+    when :title_card
+      set_ending_phase(:title_fade_out)
+    when :title_fade_out
+      set_ending_phase(:done)
+    end
+  end
+
+  def set_ending_phase phase
+    @ending_phase = phase
+    @ending_phase_started_at = Kernel.tick_count
+  end
+
+  def ending_phase_complete?
+    case @ending_phase
+    when :sacrifice_message
+      final_sacrifice_message_complete?
+    when :door_opens
+      ending_phase_elapsed >= ENDING_DOOR_OPEN_FRAMES
+    when :player_fades
+      ending_phase_elapsed >= ENDING_PLAYER_FADE_FRAMES
+    when :player_walks
+      ending_phase_elapsed >= ENDING_PLAYER_WALK_FRAMES
+    when :fade_black
+      ending_phase_elapsed >= ENDING_FADE_BLACK_FRAMES
+    when :final_text_fade_in, :final_text_fade_out, :title_fade_in, :title_fade_out
+      ending_phase_elapsed >= ENDING_CARD_FADE_FRAMES
+    when :final_text
+      ending_phase_elapsed >= ENDING_FINAL_TEXT_FRAMES
+    when :title_card
+      ending_phase_elapsed >= ENDING_TITLE_FRAMES
+    else
+      false
+    end
+  end
+
+  def ending_phase_elapsed
+    Kernel.tick_count - @ending_phase_started_at
+  end
+
+  def final_sacrifice_message_complete?
+    return false unless @interaction_text && @interaction_finished_at
+    return false unless sacrifice_scramble_complete?
+
+    Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
+  end
+
+  def sacrifice_scramble_complete?
+    return true unless @interaction_sacrificed_word
+
+    non_space_count = @interaction_sacrificed_word.length - @interaction_sacrificed_word.count(" ")
+    Kernel.tick_count - @interaction_finished_at >= non_space_count * SACRIFICE_SCRAMBLE_INTERVAL
+  end
+
+  def prepare_ending_walk
+    door = final_door
+    return unless door
+
+    @ending_player_start = { x: @player.x, y: @player.y }
+    @ending_player_target = {
+      x: door.center[:x] - @player.w / 2,
+      y: door.center[:y] - @player.h / 2
+    }
+  end
+
+  def update_ending_player_walk
+    return unless @ending_player_start && @ending_player_target
+
+    progress = (ending_phase_elapsed.to_f / ENDING_PLAYER_WALK_FRAMES).clamp(0, 1)
+    @player.x = @ending_player_start[:x].lerp(@ending_player_target[:x], progress)
+    @player.y = @ending_player_start[:y].lerp(@ending_player_target[:y], progress)
+  end
+
+  def final_door
+    interactables.find { |interactable| interactable.is_a?(FinalDoor) }
+  end
+
+  def update_interaction_text hold_final_sacrifice = false
     return unless @interaction_text
 
     if visible_interaction_text.length == @interaction_text.length
       @interaction_finished_at ||= Kernel.tick_count
-      clear_interaction_text if Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
+      clear_interaction_text if !hold_final_sacrifice && Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
     end
   end
 
@@ -663,7 +1089,7 @@ class Game
 
   def scrambled_sacrificed_word
     elapsed = Kernel.tick_count - @interaction_finished_at
-    @interaction_scramble_order ||= random_sacrifice_scramble_order
+    @interaction_scramble_order ||= random_sacrifice_scramble_order(@interaction_sacrificed_word)
     scramble_count = elapsed.idiv(SACRIFICE_SCRAMBLE_INTERVAL).clamp(0, @interaction_scramble_order.length)
     scramble_tick = elapsed.idiv(SACRIFICE_SCRAMBLE_INTERVAL)
     return @interaction_scrambled_word if @interaction_scrambled_at == scramble_tick && @interaction_scrambled_word
@@ -678,10 +1104,10 @@ class Game
     @interaction_scrambled_word
   end
 
-  def random_sacrifice_scramble_order
+  def random_sacrifice_scramble_order word = @interaction_sacrificed_word
     order = []
-    @interaction_sacrificed_word.length.times do |index|
-      next if @interaction_sacrificed_word[index] == " "
+    word.length.times do |index|
+      next if word[index] == " "
 
       insert_at = order.length == 0 ? 0 : rand(order.length + 1)
       order.insert(insert_at, index)
@@ -701,9 +1127,33 @@ class Game
   end
 
   def render args
-    render_lit_scene(args)
+    if ending_card_screen?
+      render_ending_card_background(args)
+    else
+      render_lit_scene(args)
+    end
     render_ui(args)
+    render_ending(args)
     render_room_transition(args)
+    render_reset_sequence(args)
+  end
+
+  def ending_card_screen?
+    return false unless ending_sequence_triggered?
+
+    [
+      :final_text_fade_in,
+      :final_text,
+      :final_text_fade_out,
+      :title_fade_in,
+      :title_card,
+      :title_fade_out,
+      :done
+    ].include?(@ending_phase)
+  end
+
+  def render_ending_card_background args
+    args.outputs.sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
   end
 
   def render_lit_scene args
@@ -713,16 +1163,59 @@ class Game
     render_floor(args, args.outputs[:scene])
     render_room_barriers(args, args.outputs[:scene])
     render_archive_safe_paths(args, args.outputs[:scene])
-    interactables.each { |interactable| interactable.render(args, args.outputs[:scene], @camera) }
-    nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) }
+    interactables.each { |interactable| render_interactable(args, interactable, args.outputs[:scene]) }
+    nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) unless input_locked? }
     @enemy.render(args, args.outputs[:scene], @camera) if @enemy.room_id == @current_room_id
-    @player.render(args, args.outputs[:scene], @camera)
+    @player.render(args, args.outputs[:scene], @camera, player_alpha)
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
     @player.render_light(args, args.outputs[:darkness], @camera)
 
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :darkness }
+  end
+
+  def render_interactable args, interactable, outputs
+    if interactable.is_a?(FinalDoor)
+      interactable.render(args, outputs, @camera, final_door_open?)
+    else
+      interactable.render(args, outputs, @camera)
+    end
+  end
+
+  def final_door_open?
+    return false unless ending_sequence_triggered?
+
+    [
+      :door_opens,
+      :player_fades,
+      :player_walks,
+      :fade_black,
+      :final_text_fade_in,
+      :final_text,
+      :final_text_fade_out,
+      :title_fade_in,
+      :title_card,
+      :title_fade_out,
+      :done
+    ].include?(@ending_phase)
+  end
+
+  def player_alpha
+    return 255 unless ending_sequence_triggered?
+    return 0 if [
+      :fade_black,
+      :final_text_fade_in,
+      :final_text,
+      :final_text_fade_out,
+      :title_fade_in,
+      :title_card,
+      :title_fade_out,
+      :done
+    ].include?(@ending_phase)
+    return 255 unless @ending_phase == :player_fades
+
+    (255 - ending_phase_elapsed * 210 / ENDING_PLAYER_FADE_FRAMES).clamp(45, 255)
   end
 
   def render_floor args, outputs = args.outputs
@@ -775,6 +1268,8 @@ class Game
   end
 
   def render_ui args
+    return render_ending_ui(args) if ending_sequence_triggered? && @ending_phase != :sacrifice_message
+
     args.outputs.labels << Render.label(36, 694, "PLAY SCENE", :ash, size_enum: 3)
     render_learned_words(args)
     if @interaction_text
@@ -782,7 +1277,7 @@ class Game
     end
     render_bell_tooltip(args)
     render_altar(args) if @altar_open
-    args.outputs.labels << Render.label(36, 40, "WASD / arrows move. R resets. Esc returns to title.", :ash, size_enum: -1)
+    args.outputs.labels << Render.label(36, 40, "WASD / arrows move. Drag to move. Tap to interact. R resets. Esc returns to title.", :ash, size_enum: -1)
   end
 
   def render_bell_tooltip args
@@ -836,7 +1331,132 @@ class Game
               elapsed * 255 / ROOM_FADE_OUT_FRAMES
             else
               255 - elapsed * 255 / ROOM_FADE_IN_FRAMES
-            end
+    end
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: alpha.clamp(0, 255) }
+  end
+
+  def render_reset_sequence args
+    return unless reset_sequence_active?
+
+    black_alpha = reset_black_alpha
+    args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: black_alpha } if black_alpha > 0
+
+    hint_alpha = reset_hint_alpha
+    return if hint_alpha <= 0
+
+    args.outputs.labels << Render.label(640, 360, @reset_sequence[:hint], :ash, size_enum: 3, alignment_enum: 1, a: hint_alpha)
+  end
+
+  def reset_black_alpha
+    elapsed = reset_sequence_elapsed
+    case @reset_sequence[:phase]
+    when :fade_out
+      (elapsed * 255 / reset_fade_out_frames).clamp(0, 255)
+    when :fade_in
+      (255 - elapsed * 255 / reset_fade_in_frames).clamp(0, 255)
+    else
+      255
+    end
+  end
+
+  def reset_hint_alpha
+    return 0 unless @reset_sequence[:show_hint]
+
+    elapsed = reset_sequence_elapsed
+    case @reset_sequence[:phase]
+    when :hint_fade_in
+      (elapsed * 255 / RESET_HINT_FADE_FRAMES).clamp(0, 255)
+    when :hint_hold
+      255
+    when :hint_fade_out
+      (255 - elapsed * 255 / RESET_HINT_FADE_FRAMES).clamp(0, 255)
+    else
+      0
+    end
+  end
+
+  def render_ending args
+    return unless ending_sequence_triggered?
+
+    alpha = ending_black_alpha
+    args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: alpha } if alpha > 0
+  end
+
+  def ending_black_alpha
+    case @ending_phase
+    when :fade_black
+      (ending_phase_elapsed * 255 / ENDING_FADE_BLACK_FRAMES).clamp(0, 255)
+    when :final_text_fade_in, :title_fade_in
+      (255 - ending_phase_elapsed * 255 / ENDING_CARD_FADE_FRAMES).clamp(0, 255)
+    when :final_text_fade_out, :title_fade_out
+      (ending_phase_elapsed * 255 / ENDING_CARD_FADE_FRAMES).clamp(0, 255)
+    when :done
+      255
+    else
+      0
+    end
+  end
+
+  def render_ending_ui args
+    alpha = ending_card_text_alpha
+    case @ending_phase
+    when :final_text_fade_in, :final_text, :final_text_fade_out
+      args.outputs.labels << Render.label(640, 430, "The door opens.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      args.outputs.labels << Render.label(640, 360, "Something leaves.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      args.outputs.labels << Render.label(640, 290, "It may have been you.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+    when :title_fade_in, :title_card, :title_fade_out
+      text = ending_title_text
+      args.outputs.labels << Render.label(640, 374, text, :ash, size_enum: 8, alignment_enum: 1, a: alpha)
+    end
+  end
+
+  def ending_card_text_alpha
+    case @ending_phase
+    when :final_text_fade_in, :title_fade_in
+      (ending_phase_elapsed * 255 / ENDING_CARD_FADE_FRAMES).clamp(0, 255)
+    when :final_text_fade_out, :title_fade_out
+      (255 - ending_phase_elapsed * 255 / ENDING_CARD_FADE_FRAMES).clamp(0, 255)
+    when :final_text, :title_card
+      255
+    else
+      0
+    end
+  end
+
+  def ending_title_text
+    return "EPITHET" unless @ending_title_corruptor
+    title_elapsed = Kernel.tick_count - @ending_title_started_at
+    return "EPITHET" if title_elapsed < ENDING_TITLE_CORRUPT_AFTER_FRAMES
+
+    elapsed = title_elapsed - ENDING_TITLE_CORRUPT_AFTER_FRAMES
+    @ending_title_corruptor.text(elapsed)
+  end
+end
+
+class TextCorruptor
+  def initialize text
+    @text = text
+    @order = []
+    text.length.times do |index|
+      next if text[index] == " "
+
+      insert_at = @order.length == 0 ? 0 : rand(@order.length + 1)
+      @order.insert(insert_at, index)
+    end
+    @scrambled_text = text.dup
+    @scrambled_at = nil
+  end
+
+  def text elapsed
+    scramble_count = elapsed.idiv(Game::SACRIFICE_SCRAMBLE_INTERVAL).clamp(0, @order.length)
+    scramble_tick = elapsed.idiv(Game::SACRIFICE_SCRAMBLE_INTERVAL)
+    return @scrambled_text if @scrambled_at == scramble_tick
+
+    scramble_count.times do |index|
+      word_index = @order[index]
+      @scrambled_text[word_index] = Game::SACRIFICE_SCRAMBLE_SYMBOLS[rand(Game::SACRIFICE_SCRAMBLE_SYMBOLS.length)]
+    end
+    @scrambled_at = scramble_tick
+    @scrambled_text
   end
 end

@@ -231,18 +231,20 @@ class FinalDoor < Interactable
     "The door waits for the last name."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, open = false
     door_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << Render.solid(door_rect, :void, a: 250)
+    outputs.sprites << Render.solid(door_rect, :void, a: open ? 115 : 250)
     outputs.borders << door_rect.merge(**Render.color(:flame), a: 235)
 
     inner = {
-      x: door_rect[:x] + 14,
+      x: door_rect[:x] + (open ? 34 : 14),
       y: door_rect[:y] + 16,
-      w: door_rect[:w] - 28,
+      w: open ? 20 : door_rect[:w] - 28,
       h: door_rect[:h] - 32
     }
+    outputs.sprites << Render.solid(inner, open ? :wall : :void, a: open ? 215 : 0)
     outputs.borders << inner.merge(**Render.color(:brass), a: 210)
+    return if open
 
     lock = {
       x: door_rect[:x] + door_rect[:w] / 2 - 18,
@@ -613,13 +615,17 @@ class Player
     { x: @x, y: @y, w: @w, h: @h }
   end
 
-  def update args, bounds = nil, barriers = []
+  def update args, bounds = nil, barriers = [], movement_vector = nil
     target_dx = 0
     target_dy = 0
     target_dx -= SPEED if args.inputs.keyboard.left || args.inputs.keyboard.a
     target_dx += SPEED if args.inputs.keyboard.right || args.inputs.keyboard.d
     target_dy += SPEED if args.inputs.keyboard.up || args.inputs.keyboard.w
     target_dy -= SPEED if args.inputs.keyboard.down || args.inputs.keyboard.s
+    if movement_vector
+      target_dx += movement_vector[:x] * SPEED
+      target_dy += movement_vector[:y] * SPEED
+    end
 
     @dx = @dx.lerp(target_dx, ACCELERATION)
     @dy = @dy.lerp(target_dy, ACCELERATION)
@@ -669,9 +675,9 @@ class Player
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, alpha = 255
     player_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << player_rect.merge(path: "sprites/t-pose/white.png", **Render.color(:player))
+    outputs.sprites << player_rect.merge(path: "sprites/t-pose/white.png", **Render.color(:player), a: alpha)
   end
 
   def render_light args, outputs = args.outputs, camera = nil

@@ -1,13 +1,14 @@
 class Room
-  attr_reader :id, :world_w, :world_h, :play_area, :player_spawns, :interactables
+  attr_reader :id, :world_w, :world_h, :play_area, :player_spawns, :interactables, :barriers
 
-  def initialize id, world_w, world_h, play_area, player_spawns, interactables
+  def initialize id, world_w, world_h, play_area, player_spawns, interactables, barriers = []
     @id = id
     @world_w = world_w
     @world_h = world_h
     @play_area = play_area
     @player_spawns = player_spawns
     @interactables = interactables
+    @barriers = barriers
   end
 
   def spawn spawn_id
@@ -29,6 +30,11 @@ class Game
   ALTAR_WORD_ROW_H = 42
   ROOM_FADE_OUT_FRAMES = 8
   ROOM_FADE_IN_FRAMES = 8
+  INTERACTION_RADIUS = 128
+  ARCHIVE_SAFE_PATH_TOLERANCE = 18
+  BELL_STUN_FRAMES = 3.seconds
+  BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
+  HALL_BELL_GATE = { x: 416, y: 616, w: 32, h: 64 }
 
   attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
 
@@ -52,6 +58,7 @@ class Game
     @altar_open = false
     @active_altar = nil
     @room_transition = nil
+    @archive_reset_spawn_id = :from_hall
     @pending_enemy_transition = nil
     @camera.snap_to(@player)
     @interaction_text = nil
@@ -61,6 +68,8 @@ class Game
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
     @interaction_scramble_order = nil
+    @bell_tooltip_shown = false
+    @bell_tooltip_until = nil
   end
 
   def build_rooms
@@ -82,15 +91,27 @@ class Game
         from_archive: { x: WORLD_W - 246, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
+        Bell.new(250, 650, :hall_bells),
         Lamp.new(164, 552, :lamp),
         Lamp.new(WORLD_W - 192, 552, :lamp),
         Lamp.new(164, 132, :lamp),
         Lamp.new(WORLD_W - 192, WORLD_H - 188, :lamp),
         Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 + 180, :lamp),
         Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - 132, :hall_altar),
-        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall)
-      ]
+        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
+      ],
+      hall_bell_alcove_walls
     )
+  end
+
+  def hall_bell_alcove_walls
+    [
+      { x: 88, y: 520, w: 360, h: 32 },
+      { x: 88, y: 800, w: 360, h: 32 },
+      { x: 88, y: 520, w: 32, h: 312 },
+      { x: 416, y: 520, w: 32, h: 96 },
+      { x: 416, y: 680, w: 32, h: 152 }
+    ]
   end
 
   def build_archive_room
@@ -107,9 +128,11 @@ class Game
       [
         Lamp.new(260, WORLD_H / 2 + 180, :lamp),
         Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 - 220, :lamp),
-        Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - 24, :archive_altar),
+        Mirror.new(286, WORLD_H / 2 + 110, :archive_mirror),
+        Altar.new(374, WORLD_H / 2 - 90, :archive_altar),
+        ArchiveKey.new(1234, WORLD_H / 2 + 372, :archive_key),
         Exit.new(96, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
-        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive)
+        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
       ]
     )
   end
@@ -148,7 +171,10 @@ class Game
     handle_interaction(args)
     update_interaction_text
     interactables.each { |interactable| interactable.update(args) }
-    @player.update(args, current_room.play_area)
+    @player.update(args, current_room.play_area, active_barriers)
+    close_altar_if_player_left_range
+    return if reset_player_if_off_archive_path
+
     return if update_enemy(args)
 
     @camera.follow(@player)
@@ -156,13 +182,22 @@ class Game
   end
 
   def handle_interaction args
-    return unless args.inputs.mouse.click
+    click = args.inputs.mouse.click
+    return handle_altar_selection(click) if @altar_open && click
+    return if @altar_open
 
-    return handle_altar_selection(args.inputs.mouse.click) if @altar_open
+    interactable = nil
+    if click
+      world_click = @camera.world_point(click)
+      interactable = nearby_interactables.find { |candidate| candidate.contains_point?(world_click) }
+      if interactable
+        set_interaction_text(interactable.interact(self))
+        return
+      end
+    end
 
-    click = @camera.world_point(args.inputs.mouse.click)
-    interactable = interactables.find { |candidate| candidate.contains_point?(click) }
-    set_interaction_text(interactable&.interact(self))
+    ring_bell if bell_input?(args, click)
+    set_interaction_text(nil) if click && !bell_input?(args, click)
   end
 
   def request_room_transition target_room_id, target_spawn_id, source_exit = nil
@@ -203,6 +238,7 @@ class Game
     schedule_enemy_follow_transition(@room_transition[:source_room_id], @room_transition[:source_exit])
     @current_room_id = room_id
     room = current_room
+    @archive_reset_spawn_id = archive_reset_spawn_for(spawn_id) if room_id == :archive
     spawn = room.spawn(spawn_id)
     @player.x = spawn[:x]
     @player.y = spawn[:y]
@@ -213,7 +249,7 @@ class Game
   def update_enemy args
     return unless @enemy.room_id == @current_room_id
 
-    exit = @enemy.update(args, @player, current_room, exits, enemy_patrol_points(current_room))
+    exit = @enemy.update(args, @player, current_room, traversable_exits, enemy_patrol_points(current_room), word_sacrificed?("BELL"))
     move_enemy_through_exit(exit) if exit
 
     if @enemy.room_id == @current_room_id && rects_intersect?(@enemy.rect, @player.rect)
@@ -227,6 +263,7 @@ class Game
   def schedule_enemy_follow_transition source_room_id, source_exit
     return unless source_exit
     return unless @enemy.room_id == source_room_id
+    return if @enemy.stunned?
     return unless @enemy.state == :chase || distance_between(@enemy.center, source_exit.center) <= NamelessThing::CHASE_RADIUS
 
     chase_frames = (distance_between(@enemy.center, source_exit.center) / NamelessThing::CHASE_SPEED).ceil
@@ -240,6 +277,7 @@ class Game
 
   def update_pending_enemy_transition
     return unless @pending_enemy_transition
+    return if @enemy.stunned?
     return if Kernel.tick_count < @pending_enemy_transition[:arrive_at]
 
     target_room = @rooms[@pending_enemy_transition[:target_room_id]]
@@ -261,10 +299,48 @@ class Game
     interactables.find_all { |interactable| interactable.is_a?(Exit) }
   end
 
+  def traversable_exits
+    exits.find_all { |exit| exit.can_traverse? }
+  end
+
+  def active_barriers
+    barriers = current_room.barriers.dup
+    barriers << HALL_BELL_GATE if current_room.id == :hall && !knows_word?("KEY")
+    barriers
+  end
+
+  def knows_word? word
+    @learned_words.include?(word)
+  end
+
+  def word_sacrificed? word
+    @sacrificed_words.include?(word)
+  end
+
+  def bell_input? args, click
+    return false unless knows_word?("BELL")
+    return false if word_sacrificed?("BELL")
+
+    args.inputs.keyboard.key_down.e || !!click
+  end
+
+  def ring_bell
+    @pending_enemy_transition = nil
+    @enemy.stun!(BELL_STUN_FRAMES)
+  end
+
+  def nearby_interactables
+    interactables.find_all { |interactable| nearby_interactable?(interactable) }
+  end
+
+  def nearby_interactable? interactable
+    distance_between(@player.center, interactable.center) <= INTERACTION_RADIUS
+  end
+
   def enemy_patrol_points room
     return archive_enemy_patrol_points if room.id == :archive
 
-    room_exits = exits
+    room_exits = traversable_exits
     return [{ x: room.play_area[:x] + room.play_area[:w] / 2, y: room.play_area[:y] + room.play_area[:h] / 2 }] if room_exits.empty?
 
     room_exits.map do |exit|
@@ -284,6 +360,56 @@ class Game
     ]
   end
 
+  def archive_reset_spawn_for spawn_id
+    spawn_id == :from_sanctum ? :from_sanctum : :from_hall
+  end
+
+  def archive_safe_paths
+    [
+      { x: 92, y: 560, w: 398, h: 280 },
+      { x: 250, y: 650, w: 340, h: 100 },
+      { x: 500, y: 650, w: 100, h: 350 },
+      { x: 500, y: 900, w: 440, h: 100 },
+      { x: 840, y: 560, w: 100, h: 440 },
+      { x: 840, y: 560, w: 380, h: 100 },
+      { x: 1120, y: 360, w: 100, h: 300 },
+      { x: 1120, y: 360, w: 380, h: 100 },
+      { x: 1400, y: 360, w: 100, h: 350 },
+      { x: 1400, y: 610, w: 380, h: 100 },
+      { x: 1700, y: 610, w: 408, h: 120 },
+      { x: 920, y: 900, w: 100, h: 230 },
+      { x: 920, y: 1030, w: 380, h: 100 }
+    ]
+  end
+
+  def reset_player_if_off_archive_path
+    return false unless @current_room_id == :archive
+    return false if point_on_archive_safe_path?(@player.center)
+
+    spawn = current_room.spawn(@archive_reset_spawn_id)
+    @player.x = spawn[:x]
+    @player.y = spawn[:y]
+    @player.stop!
+    close_altar
+    set_interaction_text("The floor forgets your step.")
+    @camera.snap_to(@player)
+    true
+  end
+
+  def point_on_archive_safe_path? point
+    archive_safe_paths.any? do |path|
+      point_inside_rect?(
+        point,
+        {
+          x: path[:x] - ARCHIVE_SAFE_PATH_TOLERANCE,
+          y: path[:y] - ARCHIVE_SAFE_PATH_TOLERANCE,
+          w: path[:w] + ARCHIVE_SAFE_PATH_TOLERANCE * 2,
+          h: path[:h] + ARCHIVE_SAFE_PATH_TOLERANCE * 2
+        }
+      )
+    end
+  end
+
   def interaction_text_for interactable
     return nil unless interactable
     return interactable.sacrificed_interaction_text if interactable.word && @sacrificed_words.include?(interactable.word)
@@ -293,7 +419,8 @@ class Game
 
     unless @learned_words.include?(interactable.word)
       @learned_words << interactable.word 
-      @player.light_size = interactable.id == :lamp ? 2048 : 512
+      @player.light_size = 2048 if interactable.id == :lamp
+      show_bell_tooltip if interactable.word == "BELL"
     end
     @learned_object_ids << interactable.id
     @learned_word_sources[interactable.word] = interactable.id
@@ -301,6 +428,8 @@ class Game
   end
 
   def open_altar altar
+    return "The altar is spent." if altar.sacrificed?
+
     @active_altar = altar
     @altar_open = true
     sacrificeable_words.empty? ? "The altar waits for a name." : "Choose a name to sacrifice."
@@ -320,10 +449,12 @@ class Game
   def sacrifice_word word
     return unless sacrificeable_words.include?(word)
 
-    @player.light_size = 1024 if word == "LAMP"
+    active_altar_id = @active_altar ? @active_altar.id : nil
+    @player.light_size = 4096 if word == "LAMP"
 
     @learned_words.delete(word)
     @sacrificed_words << word unless @sacrificed_words.include?(word)
+    @enemy.clear_stun! if word == "BELL"
 
     @learned_word_sources.delete(word)
     all_interactables.each do |interactable|
@@ -333,12 +464,38 @@ class Game
       interactable.sacrifice!
     end
 
+    unlock_exits_for(active_altar_id)
+    @active_altar.sacrifice! if @active_altar
     close_altar
     set_interaction_text("You sacrificed #{word}.")
   end
 
+  def show_bell_tooltip
+    return if @bell_tooltip_shown
+
+    @bell_tooltip_shown = true
+    @bell_tooltip_until = Kernel.tick_count + BELL_STUN_FRAMES
+  end
+
+  def unlock_exits_for altar_id
+    return unless altar_id
+
+    all_interactables.each do |interactable|
+      next unless interactable.is_a?(Exit)
+      next unless interactable.unlock_altar_id == altar_id
+
+      interactable.unlock!
+    end
+  end
+
   def sacrificeable_words
+    return @learned_words.select { |word| archive_sacrifice_word?(word) } if @active_altar && @active_altar.id == :archive_altar
+
     @learned_words
+  end
+
+  def archive_sacrifice_word? word
+    word == "MIRROR" || word == "KEY"
   end
 
   def sacrificed_object? object_id
@@ -356,6 +513,14 @@ class Game
   def close_altar
     @altar_open = false
     @active_altar = nil
+  end
+
+  def close_altar_if_player_left_range
+    return unless @altar_open && @active_altar
+    return if nearby_interactable?(@active_altar)
+
+    close_altar
+    clear_interaction_text
   end
 
   def altar_word_at point
@@ -382,8 +547,9 @@ class Game
   end
 
   def handle_exit_transition
-    exit = interactables.find { |interactable| interactable.is_a?(Exit) && rects_intersect?(@player.rect, interactable.rect) }
-    exit&.interact(self)
+    exit = nearby_interactables.find { |interactable| interactable.is_a?(Exit) && rects_intersect?(@player.rect, interactable.rect) }
+    text = exit&.interact(self)
+    set_interaction_text(text) if text && text != @interaction_text
   end
 
   def rects_intersect? first, second
@@ -492,7 +658,10 @@ class Game
     args.outputs[:darkness].set(w: Grid.w, h: Grid.h, background_color: [0, 0, 0, 0])
 
     render_floor(args, args.outputs[:scene])
+    render_room_barriers(args, args.outputs[:scene])
+    render_archive_safe_paths(args, args.outputs[:scene])
     interactables.each { |interactable| interactable.render(args, args.outputs[:scene], @camera) }
+    nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) }
     @enemy.render(args, args.outputs[:scene], @camera) if @enemy.room_id == @current_room_id
     @player.render(args, args.outputs[:scene], @camera)
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
@@ -509,14 +678,65 @@ class Game
     outputs.borders << play_area.merge(**Render.color(:wall))
   end
 
+  def render_room_barriers args, outputs = args.outputs
+    current_room.barriers.each do |barrier|
+      barrier_rect = @camera.screen_rect(barrier)
+      outputs.sprites << Render.solid(barrier_rect, :wall, a: 245)
+      outputs.borders << barrier_rect.merge(**Render.color(:stone), a: 220)
+    end
+
+    return unless current_room.id == :hall
+
+    gate_rect = @camera.screen_rect(HALL_BELL_GATE)
+    if knows_word?("KEY")
+      outputs.borders << gate_rect.merge(**Render.color(:ember), a: 85)
+      return
+    end
+
+    outputs.sprites << Render.solid(gate_rect, :void, a: 245)
+    outputs.borders << gate_rect.merge(**Render.color(:brass), a: 235)
+    outputs.labels << Render.label(
+      gate_rect[:x] + gate_rect[:w] / 2,
+      gate_rect[:y] + gate_rect[:h] / 2 + 8,
+      "LOCK",
+      :brass,
+      size_enum: -2,
+      alignment_enum: 1
+    )
+  end
+
+  def render_archive_safe_paths args, outputs = args.outputs
+    return unless @current_room_id == :archive
+    return unless @learned_words.include?("MIRROR")
+    return if @sacrificed_words.include?("MIRROR")
+
+    archive_safe_paths.each do |path|
+      path_rect = @camera.screen_rect(path)
+      pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
+      outputs.sprites << Render.solid(path_rect, :ash, a: (28 + pulse * 8).to_i)
+      outputs.borders << path_rect.merge(**Render.color(:brass), a: (55 + pulse * 18).to_i)
+    end
+  end
+
   def render_ui args
     args.outputs.labels << Render.label(36, 694, "PLAY SCENE", :ash, size_enum: 3)
     render_learned_words(args)
     if @interaction_text
       args.outputs.labels << Render.label(640, 664, visible_interaction_text, :ash, size_enum: 1, alignment_enum: 1)
     end
+    render_bell_tooltip(args)
     render_altar(args) if @altar_open
     args.outputs.labels << Render.label(36, 40, "WASD / arrows move. R resets. Esc returns to title.", :ash, size_enum: -1)
+  end
+
+  def render_bell_tooltip args
+    return unless @bell_tooltip_until
+    return if Kernel.tick_count >= @bell_tooltip_until
+
+    panel = { x: 286, y: 92, w: 708, h: 44 }
+    args.outputs.sprites << Render.solid(panel, :void, a: 210)
+    args.outputs.borders << panel.merge(**Render.color(:brass), a: 220)
+    args.outputs.labels << Render.label(640, 120, BELL_TOOLTIP_TEXT, :flame, size_enum: 0, alignment_enum: 1)
   end
 
   def render_learned_words args

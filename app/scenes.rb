@@ -70,7 +70,7 @@ class NameEntryScene < BaseScene
   KEYBOARD_FADE_FRAMES = 0.7.seconds
   UI_FADE_OUT_FRAMES = 0.55.seconds
   THANKS_FADE_FRAMES = 0.9.seconds
-  THANKS_HOLD_FRAMES = 3.2.seconds
+  THANKS_COMPLETE_DELAY_FRAMES = 2.seconds
   KEY_W = 58
   KEY_H = 42
   KEY_GAP = 10
@@ -114,7 +114,7 @@ class NameEntryScene < BaseScene
     when :thanks_fade_in
       set_phase(:thanks_hold) if phase_elapsed >= THANKS_FADE_FRAMES
     when :thanks_hold
-      set_phase(:thanks_fade_out) if phase_elapsed >= THANKS_HOLD_FRAMES
+      set_phase(:thanks_fade_out) if thanks_ready_to_fade_out?
     when :thanks_fade_out
       args.state.next_scene = :play if phase_elapsed >= THANKS_FADE_FRAMES
     end
@@ -235,8 +235,9 @@ class NameEntryScene < BaseScene
     alpha = thanks_alpha
     return if alpha <= 0
 
-    args.outputs.labels << Render.label(640, 408, "Thank you, #{@submitted_name}...", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
-    args.outputs.labels << Render.label(640, 348, "Our identities and our memories of them are what make us, after all...", :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+    lines = visible_thanks_lines
+    args.outputs.labels << Render.label(640, 408, lines[0], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+    args.outputs.labels << Render.label(640, 348, lines[1], :ash, size_enum: 1, alignment_enum: 1, a: alpha)
   end
 
   def prompt_alpha
@@ -265,6 +266,47 @@ class NameEntryScene < BaseScene
       (255 - phase_elapsed * 255 / THANKS_FADE_FRAMES).clamp(0, 255)
     else
       0
+    end
+  end
+
+  def visible_thanks_lines
+    lines = [
+      "Thank you, #{@submitted_name}...",
+      "Our identities and our memories of them are what make us, after all..."
+    ]
+    return lines if @phase == :thanks_fade_out
+
+    visible_lines_for_character_count(lines, thanks_character_count)
+  end
+
+  def thanks_character_count
+    elapsed = @phase == :thanks_hold ? THANKS_FADE_FRAMES + phase_elapsed : phase_elapsed
+    elapsed.idiv(Game::MESSAGE_CHARACTER_INTERVAL) + 1
+  end
+
+  def visible_thanks_text_length
+    "Thank you, #{@submitted_name}...".length +
+      "Our identities and our memories of them are what make us, after all...".length
+  end
+
+  def thanks_ready_to_fade_out?
+    thanks_total_elapsed >= thanks_complete_at + THANKS_COMPLETE_DELAY_FRAMES
+  end
+
+  def thanks_total_elapsed
+    THANKS_FADE_FRAMES + phase_elapsed
+  end
+
+  def thanks_complete_at
+    (visible_thanks_text_length - 1) * Game::MESSAGE_CHARACTER_INTERVAL
+  end
+
+  def visible_lines_for_character_count lines, character_count
+    remaining = character_count
+    lines.map do |line|
+      visible_count = remaining.clamp(0, line.length)
+      remaining -= line.length
+      line[0, visible_count]
     end
   end
 

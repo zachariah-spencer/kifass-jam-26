@@ -24,6 +24,7 @@ class Game
   PLAY_AREA = { x: 52, y: 58, w: WORLD_W - 104, h: WORLD_H - 116 }
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
+  ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
   SACRIFICE_SCRAMBLE_SYMBOLS = "!@#$%^&*?+=~[]{}/\\"
   ENDING_DOOR_OPEN_FRAMES = 1.2.seconds
@@ -31,7 +32,6 @@ class Game
   ENDING_PLAYER_WALK_FRAMES = 2.2.seconds
   ENDING_FADE_BLACK_FRAMES = 1.6.seconds
   ENDING_CARD_FADE_FRAMES = 1.seconds
-  ENDING_FINAL_TEXT_FRAMES = 4.seconds
   ENDING_TITLE_FRAMES = 3.5.seconds
   ENDING_TITLE_CORRUPT_AFTER_FRAMES = 1.1.seconds
   RESET_HINTS = ["HINT 1", "HINT 2", "HINT 3"]
@@ -1005,7 +1005,7 @@ class Game
     when :final_text_fade_in, :final_text_fade_out, :title_fade_in, :title_fade_out
       ending_phase_elapsed >= ENDING_CARD_FADE_FRAMES
     when :final_text
-      ending_phase_elapsed >= ENDING_FINAL_TEXT_FRAMES
+      final_text_ready_to_fade_out?
     when :title_card
       ending_phase_elapsed >= ENDING_TITLE_FRAMES
     else
@@ -1401,9 +1401,10 @@ class Game
     alpha = ending_card_text_alpha
     case @ending_phase
     when :final_text_fade_in, :final_text, :final_text_fade_out
-      args.outputs.labels << Render.label(640, 430, "The door opens.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
-      args.outputs.labels << Render.label(640, 360, "Something leaves.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
-      args.outputs.labels << Render.label(640, 290, "It may have been you.", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      lines = visible_final_text_lines
+      args.outputs.labels << Render.label(640, 430, lines[0], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      args.outputs.labels << Render.label(640, 360, lines[1], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      args.outputs.labels << Render.label(640, 290, lines[2], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
     when :title_fade_in, :title_card, :title_fade_out
       text = ending_title_text
       args.outputs.labels << Render.label(640, 374, text, :ash, size_enum: 8, alignment_enum: 1, a: alpha)
@@ -1420,6 +1421,49 @@ class Game
       255
     else
       0
+    end
+  end
+
+  def visible_final_text_lines
+    lines = [
+      "The door opens.",
+      "Something leaves.",
+      "It may have been you."
+    ]
+    return lines if @ending_phase == :final_text_fade_out
+
+    visible_lines_for_character_count(lines, final_text_character_count)
+  end
+
+  def final_text_character_count
+    elapsed = @ending_phase == :final_text ? ENDING_CARD_FADE_FRAMES + ending_phase_elapsed : ending_phase_elapsed
+    elapsed.idiv(MESSAGE_CHARACTER_INTERVAL) + 1
+  end
+
+  def final_text_lines_length
+    "The door opens.".length +
+      "Something leaves.".length +
+      "It may have been you.".length
+  end
+
+  def final_text_ready_to_fade_out?
+    final_text_total_elapsed >= final_text_complete_at + ENDING_TEXT_COMPLETE_DELAY_FRAMES
+  end
+
+  def final_text_total_elapsed
+    ENDING_CARD_FADE_FRAMES + ending_phase_elapsed
+  end
+
+  def final_text_complete_at
+    (final_text_lines_length - 1) * MESSAGE_CHARACTER_INTERVAL
+  end
+
+  def visible_lines_for_character_count lines, character_count
+    remaining = character_count
+    lines.map do |line|
+      visible_count = remaining.clamp(0, line.length)
+      remaining -= line.length
+      line[0, visible_count]
     end
   end
 

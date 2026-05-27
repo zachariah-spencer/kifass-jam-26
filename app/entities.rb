@@ -464,7 +464,6 @@ class NamelessThing
   BELL_SACRIFICED_CHASE_SPEED = 3.05
   CHASE_RADIUS = 420
   PATROL_TARGET_DISTANCE = 18
-  EXIT_COOLDOWN_FRAMES = 45
 
   attr_accessor :x, :y, :room_id
   attr_reader :w, :h, :state
@@ -477,7 +476,6 @@ class NamelessThing
     @h = SIZE
     @state = :patrol
     @patrol_index = 0
-    @exit_cooldown_until = 0
     @stunned_until = 0
   end
 
@@ -489,7 +487,7 @@ class NamelessThing
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
 
-  def update args, player, room, exits, patrol_points, bell_sacrificed = false
+  def update args, player, room, patrol_points, bell_sacrificed = false
     if stunned?
       @state = :stunned
       return nil
@@ -500,19 +498,15 @@ class NamelessThing
     target = @state == :chase ? player.center : current_patrol_point(patrol_points)
     move_toward(target, @state == :chase ? chase_speed(bell_sacrificed) : PATROL_SPEED, room.play_area)
     advance_patrol(patrol_points) if @state == :patrol
-
-    return nil if Kernel.tick_count < @exit_cooldown_until
-
-    exits.find { |exit| rects_intersect?(rect, exit.rect) }
   end
 
-  def enter_room room_id, spawn, play_area
+  def reset! room_id, spawn
     @room_id = room_id
     @x = spawn[:x]
     @y = spawn[:y]
-    clamp_to(play_area)
+    @state = :patrol
     @patrol_index = 0
-    @exit_cooldown_until = Kernel.tick_count + EXIT_COOLDOWN_FRAMES
+    @stunned_until = 0
   end
 
   def stun! duration_frames

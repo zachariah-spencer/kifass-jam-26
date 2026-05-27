@@ -57,7 +57,7 @@ class Game
     spawn = room.spawn(:default)
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @player = Player.new(spawn[:x], spawn[:y])
-    @enemy = NamelessThing.new(:archive, WORLD_W / 2 - NamelessThing::SIZE / 2, WORLD_H / 2 + 260)
+    @enemy = NamelessThing.new(:archive, archive_enemy_spawn[:x], archive_enemy_spawn[:y])
     @learned_words = []
     @learned_object_ids = []
     @learned_word_sources = {}
@@ -67,7 +67,6 @@ class Game
     @active_altar = nil
     @room_transition = nil
     @archive_reset_spawn_id = :from_hall
-    @pending_enemy_transition = nil
     @camera.snap_to(@player)
     @interaction_text = nil
     @interaction_started_at = nil
@@ -198,7 +197,6 @@ class Game
     update_room_transition
     return if room_transition_active?
 
-    update_pending_enemy_transition
     handle_interaction(args)
     update_interaction_text
     interactables.each { |interactable| interactable.update(args) }
@@ -266,22 +264,22 @@ class Game
   end
 
   def enter_room room_id, spawn_id
-    schedule_enemy_follow_transition(@room_transition[:source_room_id], @room_transition[:source_exit])
     @current_room_id = room_id
     room = current_room
     @archive_reset_spawn_id = archive_reset_spawn_for(spawn_id) if room_id == :archive
     spawn = room.spawn(spawn_id)
     @player.x = spawn[:x]
     @player.y = spawn[:y]
+    @enemy.reset!(:archive, archive_enemy_spawn) if room_id == :archive
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @camera.snap_to(@player)
   end
 
   def update_enemy args
-    return unless @enemy.room_id == @current_room_id
+    return false unless @current_room_id == :archive
+    return false unless @enemy.room_id == @current_room_id
 
-    exit = @enemy.update(args, @player, current_room, traversable_exits, enemy_patrol_points(current_room), word_sacrificed?("BELL"))
-    move_enemy_through_exit(exit) if exit
+    @enemy.update(args, @player, current_room, enemy_patrol_points(current_room), word_sacrificed?("BELL"))
 
     if @enemy.room_id == @current_room_id && rects_intersect?(@enemy.rect, @player.rect)
       restart
@@ -289,41 +287,6 @@ class Game
     end
 
     false
-  end
-
-  def schedule_enemy_follow_transition source_room_id, source_exit
-    return unless source_exit
-    return unless @enemy.room_id == source_room_id
-    return if @enemy.stunned?
-    return unless @enemy.state == :chase || distance_between(@enemy.center, source_exit.center) <= NamelessThing::CHASE_RADIUS
-
-    chase_frames = (distance_between(@enemy.center, source_exit.center) / NamelessThing::CHASE_SPEED).ceil
-    @pending_enemy_transition = {
-      source_exit: source_exit,
-      target_room_id: source_exit.target_room_id,
-      target_spawn_id: source_exit.target_spawn_id,
-      arrive_at: Kernel.tick_count + chase_frames
-    }
-  end
-
-  def update_pending_enemy_transition
-    return unless @pending_enemy_transition
-    return if @enemy.stunned?
-    return if Kernel.tick_count < @pending_enemy_transition[:arrive_at]
-
-    target_room = @rooms[@pending_enemy_transition[:target_room_id]]
-    @enemy.enter_room(
-      @pending_enemy_transition[:target_room_id],
-      target_room.spawn(@pending_enemy_transition[:target_spawn_id]),
-      target_room.play_area
-    )
-    @pending_enemy_transition = nil
-  end
-
-  def move_enemy_through_exit exit
-    @pending_enemy_transition = nil
-    target_room = @rooms[exit.target_room_id]
-    @enemy.enter_room(exit.target_room_id, target_room.spawn(exit.target_spawn_id), target_room.play_area)
   end
 
   def exits
@@ -361,7 +324,6 @@ class Game
   end
 
   def ring_bell
-    @pending_enemy_transition = nil
     @enemy.stun!(BELL_STUN_FRAMES)
   end
 
@@ -394,6 +356,13 @@ class Game
       { x: WORLD_W / 2, y: WORLD_H / 2 - 230 },
       { x: 320, y: WORLD_H / 2 }
     ]
+  end
+
+  def archive_enemy_spawn
+    {
+      x: WORLD_W / 2 - NamelessThing::SIZE / 2,
+      y: WORLD_H / 2 - NamelessThing::SIZE / 2
+    }
   end
 
   def archive_reset_spawn_for spawn_id

@@ -179,6 +179,90 @@ class Altar < Interactable
   end
 end
 
+class NameAltar < Altar
+  def interact game
+    return "The altar is spent." if sacrificed?
+    return "The final altar is cold. Two names must be taken first." unless game.sanctum_final_altar_active?
+
+    game.open_altar(self)
+  end
+
+  def interaction_text
+    return "The altar is spent." if sacrificed?
+
+    "The final altar waits for the last name."
+  end
+
+  def render args, outputs = args.outputs, camera = nil
+    altar_rect = camera ? camera.screen_rect(rect) : rect
+    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 96)
+    active_alpha = sacrificed? ? 170 : (220 + pulse * 25).to_i
+    outputs.sprites << Render.solid(altar_rect, sacrificed? ? :wall : :void, a: sacrificed? ? 190 : 245)
+    outputs.borders << altar_rect.merge(**Render.color(sacrificed? ? :ash : :flame), a: active_alpha)
+
+    inset = 10
+    inner = {
+      x: altar_rect[:x] + inset,
+      y: altar_rect[:y] + inset,
+      w: altar_rect[:w] - inset * 2,
+      h: altar_rect[:h] - inset * 2
+    }
+    outputs.borders << inner.merge(**Render.color(sacrificed? ? :ash : :ember), a: sacrificed? ? 120 : 210)
+
+    groove = {
+      x: altar_rect[:x] + 20,
+      y: altar_rect[:y] + altar_rect[:h] / 2 - 3,
+      w: altar_rect[:w] - 40,
+      h: 6
+    }
+    outputs.sprites << Render.solid(groove, sacrificed? ? :ash : :flame, a: sacrificed? ? 90 : 230)
+  end
+end
+
+class FinalDoor < Interactable
+  W = 118
+  H = 188
+
+  def initialize x, y, id
+    super(x, y, W, H, id: id)
+  end
+
+  def interaction_text
+    "The door waits for the last name."
+  end
+
+  def render args, outputs = args.outputs, camera = nil
+    door_rect = camera ? camera.screen_rect(rect) : rect
+    outputs.sprites << Render.solid(door_rect, :void, a: 250)
+    outputs.borders << door_rect.merge(**Render.color(:flame), a: 235)
+
+    inner = {
+      x: door_rect[:x] + 14,
+      y: door_rect[:y] + 16,
+      w: door_rect[:w] - 28,
+      h: door_rect[:h] - 32
+    }
+    outputs.borders << inner.merge(**Render.color(:brass), a: 210)
+
+    lock = {
+      x: door_rect[:x] + door_rect[:w] / 2 - 18,
+      y: door_rect[:y] + door_rect[:h] / 2 - 18,
+      w: 36,
+      h: 36
+    }
+    outputs.sprites << Render.solid(lock, :wall, a: 235)
+    outputs.borders << lock.merge(**Render.color(:flame), a: 220)
+    outputs.labels << Render.label(
+      door_rect[:x] + door_rect[:w] / 2,
+      door_rect[:y] + door_rect[:h] - 28,
+      "NAME",
+      :flame,
+      size_enum: -2,
+      alignment_enum: 1
+    )
+  end
+end
+
 class Exit < Interactable
   W = 92
   H = 92

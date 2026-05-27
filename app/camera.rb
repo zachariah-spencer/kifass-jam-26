@@ -1,6 +1,6 @@
 class Camera
   FOLLOW_SPEED = 0.12
-  ZOOM = 1.5
+  ZOOM = 0.85
 
   attr_reader :x, :y, :viewport_w, :viewport_h, :world_w, :world_h
 

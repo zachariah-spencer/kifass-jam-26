@@ -32,9 +32,17 @@ class Game
   ROOM_FADE_IN_FRAMES = 8
   INTERACTION_RADIUS = 128
   ARCHIVE_SAFE_PATH_TOLERANCE = 18
+  ARCHIVE_SAFE_PATH_EXTRA_WIDTH = 56
   BELL_STUN_FRAMES = 3.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   HALL_BELL_GATE = { x: 416, y: 616, w: 32, h: 64 }
+  SANCTUM_WALL_X = WORLD_W / 2 - 16
+  SANCTUM_GATE_H = 170
+  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: WORLD_H / 2 - SANCTUM_GATE_H / 2, w: 32, h: SANCTUM_GATE_H }
+  SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
+  SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
+  SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
+  PLAYER_NAME_WORD = "YOUR NAME"
 
   attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
 
@@ -70,6 +78,7 @@ class Game
     @interaction_scramble_order = nil
     @bell_tooltip_shown = false
     @bell_tooltip_until = nil
+    @ending_sequence_triggered = false
   end
 
   def build_rooms
@@ -128,6 +137,11 @@ class Game
       [
         Lamp.new(260, WORLD_H / 2 + 180, :lamp),
         Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 - 220, :lamp),
+        Lamp.new(610, 928, :lamp),
+        Lamp.new(930, 622, :lamp),
+        Lamp.new(1180, 436, :lamp),
+        Lamp.new(1468, 682, :lamp),
+        Lamp.new(970, 1070, :lamp),
         Mirror.new(286, WORLD_H / 2 + 110, :archive_mirror),
         Altar.new(374, WORLD_H / 2 - 90, :archive_altar),
         ArchiveKey.new(1234, WORLD_H / 2 + 372, :archive_key),
@@ -148,11 +162,28 @@ class Game
         from_archive: { x: 220, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 + 120, :lamp),
-        Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - 92, :sanctum_altar),
+        Lamp.new(300, WORLD_H / 2 + 178, :lamp),
+        Lamp.new(WORLD_W - 360, WORLD_H / 2 + 236, :lamp),
+        Altar.new(WORLD_W / 2 + 246, WORLD_H / 2 + 150, :sanctum_key_altar),
+        Altar.new(WORLD_W / 2 + 246, WORLD_H / 2 - 214, :sanctum_memory_altar),
+        NameAltar.new(WORLD_W - 500, WORLD_H / 2 - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
+        FinalDoor.new(WORLD_W - 188, WORLD_H / 2 - FinalDoor::H / 2, :sanctum_final_door),
         Exit.new(96, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
-      ]
+      ],
+      sanctum_walls
     )
+  end
+
+  def sanctum_walls
+    [
+      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: 32, h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
+      {
+        x: SANCTUM_WALL_X,
+        y: SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h],
+        w: 32,
+        h: PLAY_AREA[:y] + PLAY_AREA[:h] - (SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h])
+      }
+    ]
   end
 
   def current_room
@@ -306,6 +337,7 @@ class Game
   def active_barriers
     barriers = current_room.barriers.dup
     barriers << HALL_BELL_GATE if current_room.id == :hall && !knows_word?("KEY")
+    barriers << SANCTUM_KEY_GATE if current_room.id == :sanctum && !knows_word?("KEY")
     barriers
   end
 
@@ -315,6 +347,10 @@ class Game
 
   def word_sacrificed? word
     @sacrificed_words.include?(word)
+  end
+
+  def ending_sequence_triggered?
+    @ending_sequence_triggered
   end
 
   def bell_input? args, click
@@ -365,7 +401,7 @@ class Game
   end
 
   def archive_safe_paths
-    [
+    raw_paths = [
       { x: 92, y: 560, w: 398, h: 280 },
       { x: 250, y: 650, w: 340, h: 100 },
       { x: 500, y: 650, w: 100, h: 350 },
@@ -380,6 +416,17 @@ class Game
       { x: 920, y: 900, w: 100, h: 230 },
       { x: 920, y: 1030, w: 380, h: 100 }
     ]
+
+    raw_paths.map { |path| expanded_archive_safe_path(path) }
+  end
+
+  def expanded_archive_safe_path path
+    {
+      x: path[:x] - ARCHIVE_SAFE_PATH_EXTRA_WIDTH / 2,
+      y: path[:y] - ARCHIVE_SAFE_PATH_EXTRA_WIDTH / 2,
+      w: path[:w] + ARCHIVE_SAFE_PATH_EXTRA_WIDTH,
+      h: path[:h] + ARCHIVE_SAFE_PATH_EXTRA_WIDTH
+    }
   end
 
   def reset_player_if_off_archive_path
@@ -450,6 +497,16 @@ class Game
     return unless sacrificeable_words.include?(word)
 
     active_altar_id = @active_altar ? @active_altar.id : nil
+    if word == PLAYER_NAME_WORD
+      @sacrificed_words << word unless @sacrificed_words.include?(word)
+      @ending_sequence_triggered = true
+      @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
+      @active_altar.sacrifice! if @active_altar
+      close_altar
+      set_interaction_text("You sacrificed #{word}.")
+      return
+    end
+
     @player.light_size = 4096 if word == "LAMP"
 
     @learned_words.delete(word)
@@ -465,6 +522,7 @@ class Game
     end
 
     unlock_exits_for(active_altar_id)
+    @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
     @active_altar.sacrifice! if @active_altar
     close_altar
     set_interaction_text("You sacrificed #{word}.")
@@ -489,9 +547,35 @@ class Game
   end
 
   def sacrificeable_words
+    return sanctum_name_sacrifice_words if @active_altar && @active_altar.id == SANCTUM_FINAL_ALTAR_ID
+    return sanctum_regular_sacrifice_words if @active_altar && sanctum_regular_altar?(@active_altar)
     return @learned_words.select { |word| archive_sacrifice_word?(word) } if @active_altar && @active_altar.id == :archive_altar
 
     @learned_words
+  end
+
+  def sanctum_regular_sacrifice_words
+    words = @learned_words.select { |word| SANCTUM_ALTAR_WORDS.include?(word) }
+    return words.select { |word| word == "KEY" } if sanctum_regular_altar_spent_count == 1 && !word_sacrificed?("KEY")
+    return words.reject { |word| word == "KEY" } if word_sacrificed?("KEY")
+
+    words
+  end
+
+  def sanctum_name_sacrifice_words
+    sanctum_final_altar_active? ? [PLAYER_NAME_WORD] : []
+  end
+
+  def sanctum_regular_altar? altar
+    SANCTUM_REGULAR_ALTAR_IDS.include?(altar.id)
+  end
+
+  def sanctum_regular_altar_spent_count
+    SANCTUM_REGULAR_ALTAR_IDS.count { |altar_id| sacrificed_object?(altar_id) }
+  end
+
+  def sanctum_final_altar_active?
+    sanctum_regular_altar_spent_count == SANCTUM_REGULAR_ALTAR_IDS.length
   end
 
   def archive_sacrifice_word? word
@@ -685,9 +769,12 @@ class Game
       outputs.borders << barrier_rect.merge(**Render.color(:stone), a: 220)
     end
 
-    return unless current_room.id == :hall
+    render_key_gate(HALL_BELL_GATE, outputs) if current_room.id == :hall
+    render_key_gate(SANCTUM_KEY_GATE, outputs) if current_room.id == :sanctum
+  end
 
-    gate_rect = @camera.screen_rect(HALL_BELL_GATE)
+  def render_key_gate gate, outputs
+    gate_rect = @camera.screen_rect(gate)
     if knows_word?("KEY")
       outputs.borders << gate_rect.merge(**Render.color(:ember), a: 85)
       return

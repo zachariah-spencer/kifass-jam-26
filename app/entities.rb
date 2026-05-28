@@ -79,7 +79,7 @@ class Interactable
 end
 
 class Lamp < Interactable
-  SIZE = 28
+  SIZE = WorldScale.value(28)
   LIGHT_SIZE = 512
   LIGHT_OSCILLATION_AMOUNT = 28
 
@@ -127,11 +127,25 @@ class Lamp < Interactable
 end
 
 class Altar < Interactable
-  W = 92
-  H = 58
+  W = 512
+  H = 512
+  SPRITE_PATH = "sprites/altar.png"
+  BREAK_SPRITE_PATH = "sprites/altar_break_9.png"
+  BREAK_FRAME_COUNT = 9
+  BREAK_FRAME_COLUMNS = 3
+  BREAK_FRAME_SIZE = 1024
+  BREAK_FRAME_HOLD = 5
 
   def initialize x, y, id
     super(x, y, W, H, id: id)
+    @sacrificed_at = nil
+  end
+
+  def sacrifice!
+    return if sacrificed?
+
+    super
+    @sacrificed_at = Kernel.tick_count
   end
 
   def interact game
@@ -148,34 +162,25 @@ class Altar < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     altar_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << Render.solid(altar_rect, sacrificed? ? :wall : :altar, a: sacrificed? ? 190 : 255)
-    outputs.borders << altar_rect.merge(**Render.color(sacrificed? ? :ash : :brass), a: sacrificed? ? 150 : 255)
+    outputs.sprites << altar_sprite(altar_rect)
+  end
 
-    groove = {
-      x: altar_rect[:x] + 14,
-      y: altar_rect[:y] + altar_rect[:h] - 18,
-      w: altar_rect[:w] - 28,
-      h: 6
-    }
-    outputs.sprites << Render.solid(groove, sacrificed? ? :ash : :ember, a: sacrificed? ? 95 : 255)
-    return unless sacrificed?
+  def altar_sprite altar_rect
+    return altar_rect.merge(path: SPRITE_PATH) unless sacrificed?
 
-    outputs.lines << {
-      x: altar_rect[:x] + 16,
-      y: altar_rect[:y] + 12,
-      x2: altar_rect[:x] + altar_rect[:w] - 16,
-      y2: altar_rect[:y] + altar_rect[:h] - 12,
-      **Render.color(:ash),
-      a: 190
-    }
-    outputs.lines << {
-      x: altar_rect[:x] + altar_rect[:w] - 16,
-      y: altar_rect[:y] + 12,
-      x2: altar_rect[:x] + 16,
-      y2: altar_rect[:y] + altar_rect[:h] - 12,
-      **Render.color(:ash),
-      a: 190
-    }
+    frame_index = @sacrificed_at.frame_index(
+      count: BREAK_FRAME_COUNT,
+      hold_for: BREAK_FRAME_HOLD,
+      loop: false
+    ) || BREAK_FRAME_COUNT - 1
+
+    altar_rect.merge(
+      path: BREAK_SPRITE_PATH,
+      tile_x: frame_index % BREAK_FRAME_COLUMNS * BREAK_FRAME_SIZE,
+      tile_y: frame_index.idiv(BREAK_FRAME_COLUMNS) * BREAK_FRAME_SIZE,
+      tile_w: BREAK_FRAME_SIZE,
+      tile_h: BREAK_FRAME_SIZE
+    )
   end
 end
 
@@ -193,35 +198,11 @@ class NameAltar < Altar
     "The final altar waits for the last name."
   end
 
-  def render args, outputs = args.outputs, camera = nil
-    altar_rect = camera ? camera.screen_rect(rect) : rect
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 96)
-    active_alpha = sacrificed? ? 170 : (220 + pulse * 25).to_i
-    outputs.sprites << Render.solid(altar_rect, sacrificed? ? :wall : :void, a: sacrificed? ? 190 : 245)
-    outputs.borders << altar_rect.merge(**Render.color(sacrificed? ? :ash : :flame), a: active_alpha)
-
-    inset = 10
-    inner = {
-      x: altar_rect[:x] + inset,
-      y: altar_rect[:y] + inset,
-      w: altar_rect[:w] - inset * 2,
-      h: altar_rect[:h] - inset * 2
-    }
-    outputs.borders << inner.merge(**Render.color(sacrificed? ? :ash : :ember), a: sacrificed? ? 120 : 210)
-
-    groove = {
-      x: altar_rect[:x] + 20,
-      y: altar_rect[:y] + altar_rect[:h] / 2 - 3,
-      w: altar_rect[:w] - 40,
-      h: 6
-    }
-    outputs.sprites << Render.solid(groove, sacrificed? ? :ash : :flame, a: sacrificed? ? 90 : 230)
-  end
 end
 
 class FinalDoor < Interactable
-  W = 118
-  H = 188
+  W = WorldScale.value(118)
+  H = WorldScale.value(188)
 
   def initialize x, y, id
     super(x, y, W, H, id: id)
@@ -266,8 +247,8 @@ class FinalDoor < Interactable
 end
 
 class Exit < Interactable
-  W = 92
-  H = 92
+  W = WorldScale.value(92)
+  H = WorldScale.value(92)
 
   attr_reader :target_room_id, :target_spawn_id, :unlock_altar_id
 
@@ -323,8 +304,8 @@ class Exit < Interactable
 end
 
 class Mirror < Interactable
-  W = 54
-  H = 74
+  W = WorldScale.value(54)
+  H = WorldScale.value(74)
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "MIRROR")
@@ -355,8 +336,8 @@ class Mirror < Interactable
 end
 
 class ArchiveKey < Interactable
-  W = 42
-  H = 24
+  W = WorldScale.value(42)
+  H = WorldScale.value(24)
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "KEY")
@@ -406,8 +387,8 @@ class ArchiveKey < Interactable
 end
 
 class Bell < Interactable
-  W = 60
-  H = 54
+  W = WorldScale.value(60)
+  H = WorldScale.value(54)
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "BELL")
@@ -460,12 +441,12 @@ class Bell < Interactable
 end
 
 class NamelessThing
-  SIZE = 44
-  PATROL_SPEED = 1.45
-  CHASE_SPEED = 2.15
-  BELL_SACRIFICED_CHASE_SPEED = 3.05
-  CHASE_RADIUS = 420
-  PATROL_TARGET_DISTANCE = 18
+  SIZE = WorldScale.value(44)
+  PATROL_SPEED = 1.45 * WorldScale::FACTOR
+  CHASE_SPEED = 2.15 * WorldScale::FACTOR
+  BELL_SACRIFICED_CHASE_SPEED = 3.05 * WorldScale::FACTOR
+  CHASE_RADIUS = WorldScale.value(420)
+  PATROL_TARGET_DISTANCE = WorldScale.value(18)
 
   attr_accessor :x, :y, :room_id
   attr_reader :w, :h, :state
@@ -592,8 +573,8 @@ class NamelessThing
 end
 
 class Player
-  SIZE = 34
-  SPEED = 4.5
+  SIZE = 256
+  SPEED = 4.5 * WorldScale::FACTOR
   ACCELERATION = 0.4
   LIGHT_OSCILLATION_AMOUNT = 36
   LIGHT_OSCILLATION_FRAMES = 90
@@ -630,7 +611,12 @@ class Player
     @dx = @dx.lerp(target_dx, ACCELERATION)
     @dy = @dy.lerp(target_dy, ACCELERATION)
 
-    bounds ||= { x: 52, y: 58, w: Grid.w - 104, h: Grid.h - 116 }
+    bounds ||= {
+      x: WorldScale.value(52),
+      y: WorldScale.value(58),
+      w: WorldScale.value(Grid.w - 104),
+      h: WorldScale.value(Grid.h - 116)
+    }
     @x = (@x + @dx).clamp(bounds[:x], bounds[:x] + bounds[:w] - @w)
     resolve_barrier_collisions(:x, barriers)
     @y = (@y + @dy).clamp(bounds[:y], bounds[:y] + bounds[:h] - @h)

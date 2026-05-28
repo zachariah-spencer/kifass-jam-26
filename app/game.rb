@@ -17,11 +17,12 @@ class Room
 end
 
 class Game
+  S = WorldScale
   VIEWPORT_W = 1280
   VIEWPORT_H = 720
-  WORLD_W = 2200
-  WORLD_H = 1400
-  PLAY_AREA = { x: 52, y: 58, w: WORLD_W - 104, h: WORLD_H - 116 }
+  WORLD_W = S.value(2200)
+  WORLD_H = S.value(1400)
+  PLAY_AREA = { x: S.value(52), y: S.value(58), w: WORLD_W - S.value(104), h: WORLD_H - S.value(116) }
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
@@ -44,17 +45,17 @@ class Game
   ALTAR_WORD_ROW_H = 42
   ROOM_FADE_OUT_FRAMES = 8
   ROOM_FADE_IN_FRAMES = 8
-  INTERACTION_RADIUS = 128
-  POINTER_DRAG_DEADZONE = 16
+  INTERACTION_RADIUS = S.value(128)
+  POINTER_DRAG_DEADZONE = S.value(16)
   POINTER_TAP_MAX_FRAMES = 0.25.seconds
-  ARCHIVE_SAFE_PATH_TOLERANCE = 18
-  ARCHIVE_SAFE_PATH_EXTRA_WIDTH = 56
+  ARCHIVE_SAFE_PATH_TOLERANCE = S.value(18)
+  ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
   BELL_STUN_FRAMES = 3.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
-  HALL_BELL_GATE = { x: 416, y: 616, w: 32, h: 64 }
-  SANCTUM_WALL_X = WORLD_W / 2 - 16
-  SANCTUM_GATE_H = 170
-  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: WORLD_H / 2 - SANCTUM_GATE_H / 2, w: 32, h: SANCTUM_GATE_H }
+  HALL_BELL_GATE = S.rect({ x: 416, y: 616, w: 32, h: 64 })
+  SANCTUM_WALL_X = WORLD_W / 2 - S.value(16)
+  SANCTUM_GATE_H = S.value(170)
+  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: WORLD_H / 2 - SANCTUM_GATE_H / 2, w: S.value(32), h: SANCTUM_GATE_H }
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
   SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
@@ -127,17 +128,17 @@ class Game
       PLAY_AREA,
       {
         default: { x: WORLD_W / 2 - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: WORLD_W - 246, y: WORLD_H / 2 - Player::SIZE / 2 }
+        from_archive: { x: WORLD_W - S.value(246), y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Bell.new(250, 650, :hall_bells),
-        Lamp.new(164, 552, :lamp),
-        Lamp.new(WORLD_W - 192, 552, :lamp),
-        Lamp.new(164, 132, :lamp),
-        Lamp.new(WORLD_W - 192, WORLD_H - 188, :lamp),
-        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 + 180, :lamp),
-        Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - 132, :hall_altar),
-        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
+        Bell.new(S.value(250), S.value(650), :hall_bells),
+        Lamp.new(S.value(164), S.value(552), :lamp),
+        Lamp.new(WORLD_W - S.value(192), S.value(552), :lamp),
+        Lamp.new(S.value(164), S.value(132), :lamp),
+        Lamp.new(WORLD_W - S.value(192), WORLD_H - S.value(188), :lamp),
+        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 + S.value(180), :lamp),
+        Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - S.value(132), :hall_altar),
+        Exit.new(WORLD_W - S.value(166), WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
       ],
       hall_bell_alcove_walls
     )
@@ -145,11 +146,11 @@ class Game
 
   def hall_bell_alcove_walls
     [
-      { x: 88, y: 520, w: 360, h: 32 },
-      { x: 88, y: 800, w: 360, h: 32 },
-      { x: 88, y: 520, w: 32, h: 312 },
-      { x: 416, y: 520, w: 32, h: 96 },
-      { x: 416, y: 680, w: 32, h: 152 }
+      S.rect({ x: 88, y: 520, w: 360, h: 32 }),
+      S.rect({ x: 88, y: 800, w: 360, h: 32 }),
+      S.rect({ x: 88, y: 520, w: 32, h: 312 }),
+      S.rect({ x: 416, y: 520, w: 32, h: 96 }),
+      S.rect({ x: 416, y: 680, w: 32, h: 152 })
     ]
   end
 
@@ -160,23 +161,23 @@ class Game
       WORLD_H,
       PLAY_AREA,
       {
-        default: { x: 220, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_hall: { x: 220, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_sanctum: { x: WORLD_W - 246, y: WORLD_H / 2 - Player::SIZE / 2 }
+        default: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_hall: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_sanctum: { x: WORLD_W - S.value(246), y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Lamp.new(260, WORLD_H / 2 + 180, :lamp),
-        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 - 220, :lamp),
-        Lamp.new(610, 928, :lamp),
-        Lamp.new(930, 622, :lamp),
-        Lamp.new(1180, 436, :lamp),
-        Lamp.new(1468, 682, :lamp),
-        Lamp.new(970, 1070, :lamp),
-        Mirror.new(286, WORLD_H / 2 + 110, :archive_mirror),
-        Altar.new(374, WORLD_H / 2 - 90, :archive_altar),
-        ArchiveKey.new(1234, WORLD_H / 2 + 372, :archive_key),
-        Exit.new(96, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
-        Exit.new(WORLD_W - 166, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
+        Lamp.new(S.value(260), WORLD_H / 2 + S.value(180), :lamp),
+        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 - S.value(220), :lamp),
+        Lamp.new(S.value(610), S.value(928), :lamp),
+        Lamp.new(S.value(930), S.value(622), :lamp),
+        Lamp.new(S.value(1180), S.value(436), :lamp),
+        Lamp.new(S.value(1468), S.value(682), :lamp),
+        Lamp.new(S.value(970), S.value(1070), :lamp),
+        Mirror.new(S.value(286), WORLD_H / 2 + S.value(110), :archive_mirror),
+        Altar.new(S.value(374), WORLD_H / 2 - S.value(90), :archive_altar),
+        ArchiveKey.new(S.value(1234), WORLD_H / 2 + S.value(372), :archive_key),
+        Exit.new(S.value(96), WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
+        Exit.new(WORLD_W - S.value(166), WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
       ]
     )
   end
@@ -188,17 +189,17 @@ class Game
       WORLD_H,
       PLAY_AREA,
       {
-        default: { x: 220, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: 220, y: WORLD_H / 2 - Player::SIZE / 2 }
+        default: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_archive: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Lamp.new(300, WORLD_H / 2 + 178, :lamp),
-        Lamp.new(WORLD_W - 360, WORLD_H / 2 + 236, :lamp),
-        Altar.new(WORLD_W / 2 + 246, WORLD_H / 2 + 150, :sanctum_key_altar),
-        Altar.new(WORLD_W / 2 + 246, WORLD_H / 2 - 214, :sanctum_memory_altar),
-        NameAltar.new(WORLD_W - 500, WORLD_H / 2 - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
-        FinalDoor.new(WORLD_W - 188, WORLD_H / 2 - FinalDoor::H / 2, :sanctum_final_door),
-        Exit.new(96, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
+        Lamp.new(S.value(300), WORLD_H / 2 + S.value(178), :lamp),
+        Lamp.new(WORLD_W - S.value(360), WORLD_H / 2 + S.value(236), :lamp),
+        Altar.new(WORLD_W / 2 + S.value(246), WORLD_H / 2 + S.value(150), :sanctum_key_altar),
+        Altar.new(WORLD_W / 2 + S.value(246), WORLD_H / 2 - S.value(214), :sanctum_memory_altar),
+        NameAltar.new(WORLD_W - S.value(500), WORLD_H / 2 - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
+        FinalDoor.new(WORLD_W - S.value(188), WORLD_H / 2 - FinalDoor::H / 2, :sanctum_final_door),
+        Exit.new(S.value(96), WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
       ],
       sanctum_walls
     )
@@ -206,11 +207,11 @@ class Game
 
   def sanctum_walls
     [
-      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: 32, h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
+      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: S.value(32), h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
       {
         x: SANCTUM_WALL_X,
         y: SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h],
-        w: 32,
+        w: S.value(32),
         h: PLAY_AREA[:y] + PLAY_AREA[:h] - (SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h])
       }
     ]
@@ -647,10 +648,10 @@ class Game
 
   def archive_enemy_patrol_points
     [
-      { x: WORLD_W / 2, y: WORLD_H / 2 + 250 },
-      { x: WORLD_W - 312, y: WORLD_H / 2 },
-      { x: WORLD_W / 2, y: WORLD_H / 2 - 230 },
-      { x: 320, y: WORLD_H / 2 }
+      { x: WORLD_W / 2, y: WORLD_H / 2 + S.value(250) },
+      { x: WORLD_W - S.value(312), y: WORLD_H / 2 },
+      { x: WORLD_W / 2, y: WORLD_H / 2 - S.value(230) },
+      { x: S.value(320), y: WORLD_H / 2 }
     ]
   end
 
@@ -667,19 +668,19 @@ class Game
 
   def archive_safe_paths
     raw_paths = [
-      { x: 92, y: 560, w: 398, h: 280 },
-      { x: 250, y: 650, w: 340, h: 100 },
-      { x: 500, y: 650, w: 100, h: 350 },
-      { x: 500, y: 900, w: 440, h: 100 },
-      { x: 840, y: 560, w: 100, h: 440 },
-      { x: 840, y: 560, w: 380, h: 100 },
-      { x: 1120, y: 360, w: 100, h: 300 },
-      { x: 1120, y: 360, w: 380, h: 100 },
-      { x: 1400, y: 360, w: 100, h: 350 },
-      { x: 1400, y: 610, w: 380, h: 100 },
-      { x: 1700, y: 610, w: 408, h: 120 },
-      { x: 920, y: 900, w: 100, h: 230 },
-      { x: 920, y: 1030, w: 380, h: 100 }
+      S.rect({ x: 92, y: 560, w: 398, h: 280 }),
+      S.rect({ x: 250, y: 650, w: 340, h: 100 }),
+      S.rect({ x: 500, y: 650, w: 100, h: 350 }),
+      S.rect({ x: 500, y: 900, w: 440, h: 100 }),
+      S.rect({ x: 840, y: 560, w: 100, h: 440 }),
+      S.rect({ x: 840, y: 560, w: 380, h: 100 }),
+      S.rect({ x: 1120, y: 360, w: 100, h: 300 }),
+      S.rect({ x: 1120, y: 360, w: 380, h: 100 }),
+      S.rect({ x: 1400, y: 360, w: 100, h: 350 }),
+      S.rect({ x: 1400, y: 610, w: 380, h: 100 }),
+      S.rect({ x: 1700, y: 610, w: 408, h: 120 }),
+      S.rect({ x: 920, y: 900, w: 100, h: 230 }),
+      S.rect({ x: 920, y: 1030, w: 380, h: 100 })
     ]
 
     raw_paths.map { |path| expanded_archive_safe_path(path) }

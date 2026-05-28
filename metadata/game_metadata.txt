@@ -82,7 +82,7 @@ hd=true
 # +== High DPI ===
 # | Setting this property to true will enable High DPI rendering (try in combination with scale_quality to see what looks best)
 # +===============
-# highdpi=false
+highdpi=true
 
 # +== Texture Atlases ===
 # | See sample app for texture atlas usage: =./samples/07_advanced_rendering_hd/02_texture_atlases=
@@ -97,7 +97,7 @@ hd=true
 # |       think about what you want to render outside of the games main 1280x720 logical
 # |       area.
 # +======================
-# hd_letterbox=true
+hd_letterbox=true
 
 # +== Scaling options for All Screen Mode ===
 # | You can specify the maximum scale for your game. hd_max_scale's default value is 0 which
@@ -122,7 +122,7 @@ hd=true
 # NOTE: If you want a pixel perfect game for all resolutions. You'll want to use hd_max_scale=400.
 #       If you don't want to worry about rendering game artifacts outside of the pixel perfect area,
 #       keep hd_letterbox=true.
-# hd_max_scale=0
+hd_max_scale=0
 
 # Available hd_max_scale values (other than hd_max_scale=0 which is described above)
 # 720p: Scales up to 1280x720

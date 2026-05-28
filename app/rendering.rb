@@ -1,3 +1,17 @@
+module WorldScale
+  ORIGINAL_PLAYER_SIZE = 34.0
+  CURRENT_PLAYER_SIZE = 256.0
+  FACTOR = CURRENT_PLAYER_SIZE / ORIGINAL_PLAYER_SIZE
+
+  def self.value amount
+    (amount * FACTOR).round
+  end
+
+  def self.rect rect
+    rect.transform_values { |value| value.is_a?(Numeric) ? WorldScale.value(value) : value }
+  end
+end
+
 module Render
   TRANSITION_FRAMES = 28
   HOLE_PUNCH_BLENDMODE = Numeric.compose_blendmode(
@@ -11,7 +25,7 @@ module Render
 
   PALETTE = {
     void: { r: 10, g: 9, b: 14 },
-    stone: { r: 48, g: 49, b: 58 },
+    stone: { r: 39, g: 22, b: 10 },
     wall: { r: 26, g: 26, b: 34 },
     ash: { r: 170, g: 170, b: 165 },
     ember: { r: 210, g: 92, b: 54 },

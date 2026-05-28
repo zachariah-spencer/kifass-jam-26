@@ -27,7 +27,7 @@ module Render
     void: { r: 10, g: 9, b: 14 },
     stone: { r: 39, g: 22, b: 10 },
     wall: { r: 26, g: 26, b: 34 },
-    ash: { r: 170, g: 170, b: 165 },
+    ash: { r: 170, g: 170, b: 170 },
     ember: { r: 210, g: 92, b: 54 },
     brass: { r: 154, g: 121, b: 74 },
     flame: { r: 255, g: 188, b: 86 },

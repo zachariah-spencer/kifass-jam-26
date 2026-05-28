@@ -18,11 +18,13 @@ end
 
 class Game
   S = WorldScale
+  MAP_TILE = 128
+  G = -> tile { tile * MAP_TILE }
   VIEWPORT_W = 1280
   VIEWPORT_H = 720
-  WORLD_W = S.value(2200)
-  WORLD_H = S.value(1400)
-  PLAY_AREA = { x: S.value(52), y: S.value(58), w: WORLD_W - S.value(104), h: WORLD_H - S.value(116) }
+  WORLD_W = G[130]
+  WORLD_H = G[82]
+  PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
@@ -52,14 +54,22 @@ class Game
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
   BELL_STUN_FRAMES = 3.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
-  HALL_BELL_GATE = S.rect({ x: 416, y: 616, w: 32, h: 64 })
-  SANCTUM_WALL_X = WORLD_W / 2 - S.value(16)
-  SANCTUM_GATE_H = S.value(170)
-  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: WORLD_H / 2 - SANCTUM_GATE_H / 2, w: S.value(32), h: SANCTUM_GATE_H }
+  HALL_BELL_GATE = { x: G[25], y: G[37], w: G[2], h: G[3] }
+  SANCTUM_WALL_X = G[64]
+  SANCTUM_GATE_H = G[10]
+  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: G[36], w: G[2], h: SANCTUM_GATE_H }
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
   SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
   PLAYER_NAME_WORD = "YOUR NAME"
+  ENV_TILE_SIZE = 128
+  ENV_TILE_PATH_TEMPLATE = "sprites/environment/tiles/tile%04d.png"
+  ENV_TILE_PATCH_PATH = "sprites/environment/tiles/tile_patch.png"
+  ENV_TILE_PATCH_SIZE = 16
+  ENV_TILE_W = 1
+  ENV_TILE_S = 2
+  ENV_TILE_E = 4
+  ENV_TILE_N = 8
 
   attr_accessor :player_name
   attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
@@ -103,6 +113,7 @@ class Game
     @pointer_taps = []
     @pointer_tap = nil
     @pointer_drag_vector = nil
+    @env_tile_cache = {}
     @ending_sequence_triggered = false
     @ending_phase = nil
     @ending_phase_started_at = nil
@@ -128,17 +139,17 @@ class Game
       PLAY_AREA,
       {
         default: { x: WORLD_W / 2 - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: WORLD_W - S.value(246), y: WORLD_H / 2 - Player::SIZE / 2 }
+        from_archive: { x: G[120] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Bell.new(S.value(250), S.value(650), :hall_bells),
-        Lamp.new(S.value(164), S.value(552), :lamp),
-        Lamp.new(WORLD_W - S.value(192), S.value(552), :lamp),
-        Lamp.new(S.value(164), S.value(132), :lamp),
-        Lamp.new(WORLD_W - S.value(192), WORLD_H - S.value(188), :lamp),
-        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 + S.value(180), :lamp),
-        Altar.new(WORLD_W / 2 - Altar::W / 2, WORLD_H / 2 - S.value(132), :hall_altar),
-        Exit.new(WORLD_W - S.value(166), WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
+        Bell.new(G[14] - Bell::W / 2, G[40] - Bell::H / 2, :hall_bells),
+        Lamp.new(G[10] - Lamp::SIZE / 2, G[33] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[120] - Lamp::SIZE / 2, G[33] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[10] - Lamp::SIZE / 2, G[10] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[120] - Lamp::SIZE / 2, G[72] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[65] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
+        Altar.new(G[65] - Altar::W / 2, G[36] - Altar::H / 2, :hall_altar),
+        Exit.new(G[125] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
       ],
       hall_bell_alcove_walls
     )
@@ -146,11 +157,11 @@ class Game
 
   def hall_bell_alcove_walls
     [
-      S.rect({ x: 88, y: 520, w: 360, h: 32 }),
-      S.rect({ x: 88, y: 800, w: 360, h: 32 }),
-      S.rect({ x: 88, y: 520, w: 32, h: 312 }),
-      S.rect({ x: 416, y: 520, w: 32, h: 96 }),
-      S.rect({ x: 416, y: 680, w: 32, h: 152 })
+      { x: G[5], y: G[31], w: G[22], h: G[2] },
+      { x: G[5], y: G[47], w: G[22], h: G[2] },
+      { x: G[5], y: G[31], w: G[2], h: G[18] },
+      { x: G[25], y: G[31], w: G[2], h: G[6] },
+      { x: G[25], y: G[40], w: G[2], h: G[9] }
     ]
   end
 
@@ -161,23 +172,23 @@ class Game
       WORLD_H,
       PLAY_AREA,
       {
-        default: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_hall: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_sanctum: { x: WORLD_W - S.value(246), y: WORLD_H / 2 - Player::SIZE / 2 }
+        default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_hall: { x: G[10] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_sanctum: { x: G[123] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Lamp.new(S.value(260), WORLD_H / 2 + S.value(180), :lamp),
-        Lamp.new(WORLD_W / 2 - Lamp::SIZE / 2, WORLD_H / 2 - S.value(220), :lamp),
-        Lamp.new(S.value(610), S.value(928), :lamp),
-        Lamp.new(S.value(930), S.value(622), :lamp),
-        Lamp.new(S.value(1180), S.value(436), :lamp),
-        Lamp.new(S.value(1468), S.value(682), :lamp),
-        Lamp.new(S.value(970), S.value(1070), :lamp),
-        Mirror.new(S.value(286), WORLD_H / 2 + S.value(110), :archive_mirror),
-        Altar.new(S.value(374), WORLD_H / 2 - S.value(90), :archive_altar),
-        ArchiveKey.new(S.value(1234), WORLD_H / 2 + S.value(372), :archive_key),
-        Exit.new(S.value(96), WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
-        Exit.new(WORLD_W - S.value(166), WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
+        Lamp.new(G[16] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[65] - Lamp::SIZE / 2, G[24] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[36] - Lamp::SIZE / 2, G[56] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[55] - Lamp::SIZE / 2, G[42] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[69] - Lamp::SIZE / 2, G[31] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[86] - Lamp::SIZE / 2, G[45] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[57] - Lamp::SIZE / 2, G[67] - Lamp::SIZE / 2, :lamp),
+        Mirror.new(G[17] - Mirror::W / 2, G[49] - Mirror::H / 2, :archive_mirror),
+        Altar.new(G[22] - Altar::W / 2, G[36] - Altar::H / 2, :archive_altar),
+        ArchiveKey.new(G[72] - ArchiveKey::W / 2, G[70] - ArchiveKey::H / 2, :archive_key),
+        Exit.new(G[5] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
+        Exit.new(G[125] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
       ]
     )
   end
@@ -189,17 +200,17 @@ class Game
       WORLD_H,
       PLAY_AREA,
       {
-        default: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: S.value(220), y: WORLD_H / 2 - Player::SIZE / 2 }
+        default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_archive: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
-        Lamp.new(S.value(300), WORLD_H / 2 + S.value(178), :lamp),
-        Lamp.new(WORLD_W - S.value(360), WORLD_H / 2 + S.value(236), :lamp),
-        Altar.new(WORLD_W / 2 + S.value(246), WORLD_H / 2 + S.value(150), :sanctum_key_altar),
-        Altar.new(WORLD_W / 2 + S.value(246), WORLD_H / 2 - S.value(214), :sanctum_memory_altar),
-        NameAltar.new(WORLD_W - S.value(500), WORLD_H / 2 - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
-        FinalDoor.new(WORLD_W - S.value(188), WORLD_H / 2 - FinalDoor::H / 2, :sanctum_final_door),
-        Exit.new(S.value(96), WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
+        Lamp.new(G[18] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
+        Lamp.new(G[110] - Lamp::SIZE / 2, G[58] - Lamp::SIZE / 2, :lamp),
+        Altar.new(G[85] - Altar::W / 2, G[53] - Altar::H / 2, :sanctum_key_altar),
+        Altar.new(G[85] - Altar::W / 2, G[30] - Altar::H / 2, :sanctum_memory_altar),
+        NameAltar.new(G[100] - NameAltar::W / 2, G[41] - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
+        FinalDoor.new(G[120] - FinalDoor::W / 2, G[41] - FinalDoor::H / 2, :sanctum_final_door),
+        Exit.new(G[5] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
       ],
       sanctum_walls
     )
@@ -207,11 +218,11 @@ class Game
 
   def sanctum_walls
     [
-      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: S.value(32), h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
+      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: G[2], h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
       {
         x: SANCTUM_WALL_X,
         y: SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h],
-        w: S.value(32),
+        w: G[2],
         h: PLAY_AREA[:y] + PLAY_AREA[:h] - (SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h])
       }
     ]
@@ -648,10 +659,10 @@ class Game
 
   def archive_enemy_patrol_points
     [
-      { x: WORLD_W / 2, y: WORLD_H / 2 + S.value(250) },
-      { x: WORLD_W - S.value(312), y: WORLD_H / 2 },
-      { x: WORLD_W / 2, y: WORLD_H / 2 - S.value(230) },
-      { x: S.value(320), y: WORLD_H / 2 }
+      { x: WORLD_W / 2, y: G[56] },
+      { x: G[114], y: WORLD_H / 2 },
+      { x: WORLD_W / 2, y: G[28] },
+      { x: G[16], y: WORLD_H / 2 }
     ]
   end
 
@@ -668,22 +679,22 @@ class Game
 
   def archive_safe_paths
     raw_paths = [
-      S.rect({ x: 92, y: 560, w: 398, h: 280 }),
-      S.rect({ x: 250, y: 650, w: 340, h: 100 }),
-      S.rect({ x: 500, y: 650, w: 100, h: 350 }),
-      S.rect({ x: 500, y: 900, w: 440, h: 100 }),
-      S.rect({ x: 840, y: 560, w: 100, h: 440 }),
-      S.rect({ x: 840, y: 560, w: 380, h: 100 }),
-      S.rect({ x: 1120, y: 360, w: 100, h: 300 }),
-      S.rect({ x: 1120, y: 360, w: 380, h: 100 }),
-      S.rect({ x: 1400, y: 360, w: 100, h: 350 }),
-      S.rect({ x: 1400, y: 610, w: 380, h: 100 }),
-      S.rect({ x: 1700, y: 610, w: 408, h: 120 }),
-      S.rect({ x: 920, y: 900, w: 100, h: 230 }),
-      S.rect({ x: 920, y: 1030, w: 380, h: 100 })
+      { x: G[5], y: G[33], w: G[19], h: G[17] },
+      { x: G[14], y: G[38], w: G[15], h: G[7] },
+      { x: G[29], y: G[38], w: G[6], h: G[21] },
+      { x: G[29], y: G[53], w: G[23], h: G[7] },
+      { x: G[49], y: G[33], w: G[6], h: G[27] },
+      { x: G[49], y: G[33], w: G[20], h: G[7] },
+      { x: G[66], y: G[21], w: G[6], h: G[19] },
+      { x: G[66], y: G[21], w: G[20], h: G[7] },
+      { x: G[82], y: G[21], w: G[6], h: G[21] },
+      { x: G[82], y: G[36], w: G[23], h: G[7] },
+      { x: G[100], y: G[36], w: G[25], h: G[8] },
+      { x: G[54], y: G[53], w: G[6], h: G[15] },
+      { x: G[54], y: G[62], w: G[22], h: G[7] }
     ]
 
-    raw_paths.map { |path| expanded_archive_safe_path(path) }
+    raw_paths
   end
 
   def expanded_archive_safe_path path
@@ -1170,6 +1181,7 @@ class Game
     @player.render(args, args.outputs[:scene], @camera, player_alpha)
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
+    @enemy.render_light(args, args.outputs[:darkness], @camera) if @enemy.room_id == @current_room_id
     @player.render_light(args, args.outputs[:darkness], @camera)
 
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }
@@ -1222,18 +1234,173 @@ class Game
   def render_floor args, outputs = args.outputs
     play_area = @camera.screen_rect(current_room.play_area)
     outputs.sprites << Render.solid(play_area, :stone, a: 85)
-    outputs.borders << play_area.merge(**Render.color(:wall))
+    render_env_tiles(outputs, cached_env_tile_cells([:room_outline, current_room.id]) { rect_outline_cells(current_room.play_area) })
   end
 
   def render_room_barriers args, outputs = args.outputs
-    current_room.barriers.each do |barrier|
-      barrier_rect = @camera.screen_rect(barrier)
-      outputs.sprites << Render.solid(barrier_rect, :wall, a: 245)
-      outputs.borders << barrier_rect.merge(**Render.color(:stone), a: 220)
-    end
+    render_env_tiles(
+      outputs,
+      cached_env_tile_cells([:barriers, current_room.id]) do
+        current_room.barriers.flat_map { |barrier| rect_fill_cells(barrier) }.uniq
+      end
+    )
 
     render_key_gate(HALL_BELL_GATE, outputs) if current_room.id == :hall
     render_key_gate(SANCTUM_KEY_GATE, outputs) if current_room.id == :sanctum
+  end
+
+  def cached_env_tile_cells key
+    @env_tile_cache[key] ||= env_tile_layer(yield)
+  end
+
+  def rect_outline_cells rect
+    min_col, max_col, min_row, max_row = env_cell_bounds(rect)
+    cells = []
+
+    (min_col..max_col).each do |col|
+      (min_row..max_row).each do |row|
+        next unless col == min_col || col == max_col || row == min_row || row == max_row
+
+        cells << [col, row]
+      end
+    end
+
+    cells
+  end
+
+  def rect_fill_cells rect
+    min_col, max_col, min_row, max_row = env_cell_bounds(rect)
+    cells = []
+
+    (min_col..max_col).each do |col|
+      (min_row..max_row).each do |row|
+        cells << [col, row]
+      end
+    end
+
+    cells
+  end
+
+  def env_cell_bounds rect
+    [
+      (rect[:x] / ENV_TILE_SIZE).floor,
+      ((rect[:x] + rect[:w] - 1) / ENV_TILE_SIZE).floor,
+      (rect[:y] / ENV_TILE_SIZE).floor,
+      ((rect[:y] + rect[:h] - 1) / ENV_TILE_SIZE).floor
+    ]
+  end
+
+  def render_env_tiles outputs, layer, alpha: 255
+    cells = layer[:cells]
+    occupied = layer[:occupied]
+    tile_size = ENV_TILE_SIZE * Camera::ZOOM
+
+    cells.each do |col, row|
+      world_rect = {
+        x: col * ENV_TILE_SIZE,
+        y: row * ENV_TILE_SIZE,
+        w: ENV_TILE_SIZE,
+        h: ENV_TILE_SIZE
+      }
+      tile_rect = @camera.screen_rect(world_rect)
+      outputs.sprites << tile_rect.merge(
+        path: env_tile_path(env_tile_mask(col, row, occupied)),
+        w: tile_size,
+        h: tile_size,
+        a: alpha
+      )
+    end
+
+    render_env_tile_patches(outputs, layer[:patches], alpha: alpha)
+  end
+
+  def env_tile_mask col, row, occupied
+    return 0 if env_tile_internal?(col, row, occupied)
+
+    mask = 0
+    mask += ENV_TILE_N unless occupied[[col, row + 1]]
+    mask += ENV_TILE_E unless occupied[[col + 1, row]]
+    mask += ENV_TILE_S unless occupied[[col, row - 1]]
+    mask += ENV_TILE_W unless occupied[[col - 1, row]]
+    mask
+  end
+
+  def env_tile_layer cells
+    occupied = cells.each_with_object({}) { |cell, lookup| lookup[cell] = true }
+    {
+      cells: occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) },
+      occupied: occupied,
+      patches: env_inside_corner_patches(occupied)
+    }
+  end
+
+  def env_tile_internal? col, row, occupied
+    occupied[[col, row + 1]] &&
+      occupied[[col + 1, row]] &&
+      occupied[[col, row - 1]] &&
+      occupied[[col - 1, row]]
+  end
+
+  def render_env_tile_patches outputs, patches, alpha: 255
+    patch_size = ENV_TILE_PATCH_SIZE * Camera::ZOOM
+
+    patches.each do |patch|
+      patch_rect = @camera.screen_rect(
+        x: patch[:x],
+        y: patch[:y],
+        w: ENV_TILE_PATCH_SIZE,
+        h: ENV_TILE_PATCH_SIZE
+      )
+      outputs.sprites << patch_rect.merge(
+        path: ENV_TILE_PATCH_PATH,
+        w: patch_size,
+        h: patch_size,
+        a: alpha
+      )
+    end
+  end
+
+  def env_inside_corner_patches occupied
+    points = {}
+
+    occupied.each_key do |col, row|
+      points[[col, row]] = true
+      points[[col + 1, row]] = true
+      points[[col, row + 1]] = true
+      points[[col + 1, row + 1]] = true
+    end
+
+    points.each_key.flat_map do |col, row|
+      ne = occupied[[col, row]]
+      nw = occupied[[col - 1, row]]
+      sw = occupied[[col - 1, row - 1]]
+      se = occupied[[col, row - 1]]
+      next [] unless [ne, nw, sw, se].count(true) == 3
+
+      env_inside_corner_patch(col, row, ne, nw, sw, se)
+    end
+  end
+
+  def env_inside_corner_patch col, row, ne, nw, sw, se
+    x = col * ENV_TILE_SIZE
+    y = row * ENV_TILE_SIZE
+    p = ENV_TILE_PATCH_SIZE
+
+    if !ne
+      [{ x: x - p, y: y - p }]
+    elsif !nw
+      [{ x: x, y: y - p }]
+    elsif !sw
+      [{ x: x, y: y }]
+    elsif !se
+      [{ x: x - p, y: y }]
+    else
+      []
+    end
+  end
+
+  def env_tile_path mask
+    ENV_TILE_PATH_TEMPLATE % mask
   end
 
   def render_key_gate gate, outputs
@@ -1260,12 +1427,14 @@ class Game
     return unless @learned_words.include?("MIRROR")
     return if @sacrificed_words.include?("MIRROR")
 
-    archive_safe_paths.each do |path|
-      path_rect = @camera.screen_rect(path)
-      pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
-      outputs.sprites << Render.solid(path_rect, :ash, a: (28 + pulse * 8).to_i)
-      outputs.borders << path_rect.merge(**Render.color(:brass), a: (55 + pulse * 18).to_i)
-    end
+    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
+    render_env_tiles(
+      outputs,
+      cached_env_tile_cells(:archive_safe_paths) do
+        archive_safe_paths.flat_map { |path| rect_fill_cells(path) }.uniq
+      end,
+      alpha: (55 + pulse * 18).to_i
+    )
   end
 
   def render_ui args

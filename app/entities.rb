@@ -67,8 +67,8 @@ class Interactable
       h: highlight_rect[:h] - inset * 2
     }
 
-    outputs.borders << rect.merge(**Render.color(:flame), a: 210)
-    outputs.sprites << Render.solid(rect, :flame, a: 24)
+    outputs.borders << rect.merge(**Render.color(:ash), a: 210)
+    outputs.sprites << Render.solid(rect, :ash, a: 24)
   end
 
   def render_light args, outputs = args.outputs, camera = nil
@@ -93,6 +93,12 @@ end
 
 class Lamp < Interactable
   SIZE = WorldScale.value(28)
+  SPRITE_PATH = "sprites/lamp.png"
+  BURNT_OUT_SPRITE_PATH = "sprites/lamp_burnt_out.png"
+  FRAME_COUNT = 9
+  FRAME_COLUMNS = 3
+  FRAME_SIZE = 1024
+  FRAME_HOLD = 8
   LIGHT_SIZE = 512
   SACRIFICED_LIGHT_SIZE = 512
   SACRIFICED_LIGHT_ALPHA = 70
@@ -100,6 +106,15 @@ class Lamp < Interactable
 
   def initialize x, y, id
     super(x, y, SIZE, SIZE, id: id, word: "LAMP")
+    @animation_offset = animation_offset
+    @sacrificed_at = nil
+  end
+
+  def sacrifice!
+    return if sacrificed?
+
+    super
+    @sacrificed_at = Kernel.tick_count
   end
 
   def interaction_text
@@ -112,17 +127,7 @@ class Lamp < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     lamp_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << lamp_rect.merge(path: "sprites/circle/yellow.png", **Render.color(sacrificed? ? :ash : :brass))
-    return if sacrificed?
-
-    outputs.sprites << {
-      x: lamp_rect[:x] + 16,
-      y: lamp_rect[:y] + 16,
-      w: 12,
-      h: 12,
-      path: "sprites/circle/yellow.png",
-      **Render.color(:flame)
-    }
+    outputs.sprites << lamp_rect.merge(lamp_sprite)
   end
 
   def render_light args, outputs = args.outputs, camera = nil
@@ -137,6 +142,33 @@ class Lamp < Interactable
       a: sacrificed? ? SACRIFICED_LIGHT_ALPHA : 255,
       blendmode: Render::HOLE_PUNCH_BLENDMODE
     )
+  end
+
+  def lamp_sprite
+    frame_index = lamp_frame_index
+
+    {
+      path: sacrificed? ? BURNT_OUT_SPRITE_PATH : SPRITE_PATH,
+      tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
+      tile_y: frame_index.idiv(FRAME_COLUMNS) * FRAME_SIZE,
+      tile_w: FRAME_SIZE,
+      tile_h: FRAME_SIZE
+    }
+  end
+
+  def lamp_frame_index
+    return (Kernel.tick_count + @animation_offset).idiv(FRAME_HOLD) % FRAME_COUNT unless sacrificed?
+
+    @sacrificed_at.frame_index(
+      count: FRAME_COUNT,
+      hold_for: FRAME_HOLD,
+      loop: false
+    ) || FRAME_COUNT - 1
+  end
+
+  def animation_offset
+    seed = @id.to_s.each_byte.reduce(0) { |total, byte| total * 31 + byte }
+    (seed + @x * 17 + @y * 37).to_i % (FRAME_COUNT * FRAME_HOLD)
   end
 end
 
@@ -455,11 +487,20 @@ class Bell < Interactable
 end
 
 class NamelessThing
-  SIZE = WorldScale.value(44)
+  SIZE = WorldScale.value(88)
+  PATROL_SPRITE_PATH = "sprites/monster.png"
+  CHASE_SPRITE_PATH = "sprites/monster_aggro.png"
+  FRAME_COUNT = 8
+  FRAME_COLUMNS = 3
+  FRAME_SIZE = 1024
+  PATROL_FRAME_HOLD = 9
+  CHASE_FRAME_HOLD = 5
+  LIGHT_SIZE = 256
+  LIGHT_FADE_FRAMES = Render::TRANSITION_FRAMES
   PATROL_SPEED = 1.45 * WorldScale::FACTOR
   CHASE_SPEED = 2.15 * WorldScale::FACTOR
   BELL_SACRIFICED_CHASE_SPEED = 3.05 * WorldScale::FACTOR
-  CHASE_RADIUS = WorldScale.value(420)
+  CHASE_RADIUS = WorldScale.value(350)
   PATROL_TARGET_DISTANCE = WorldScale.value(18)
 
   attr_accessor :x, :y, :room_id
@@ -474,6 +515,9 @@ class NamelessThing
     @state = :patrol
     @patrol_index = 0
     @stunned_until = 0
+    @animation_started_at = Kernel.tick_count
+    @light_fade_started_at = nil
+    @light_fade_direction = nil
   end
 
   def rect
@@ -490,7 +534,7 @@ class NamelessThing
       return nil
     end
 
-    @state = close_to_player?(player) ? :chase : :patrol
+    set_state(close_to_player?(player) ? :chase : :patrol)
 
     target = @state == :chase ? player.center : current_patrol_point(patrol_points)
     move_toward(target, @state == :chase ? chase_speed(bell_sacrificed) : PATROL_SPEED, room.play_area)
@@ -504,6 +548,9 @@ class NamelessThing
     @state = :patrol
     @patrol_index = 0
     @stunned_until = 0
+    @animation_started_at = Kernel.tick_count
+    @light_fade_started_at = nil
+    @light_fade_direction = nil
   end
 
   def stun! duration_frames
@@ -524,23 +571,67 @@ class NamelessThing
 
   def render args, outputs = args.outputs, camera = nil
     enemy_rect = camera ? camera.screen_rect(rect) : rect
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 96)
-    inset = 5 + pulse * 2
+    outputs.sprites << enemy_rect.merge(enemy_sprite)
+  end
 
-    border_color = @state == :stunned ? :flame : (@state == :chase ? :ember : :ash)
-    border_alpha = @state == :stunned ? 245 : (@state == :chase ? 220 : 125)
-    outputs.sprites << Render.solid(enemy_rect, :enemy, a: @state == :stunned ? 180 : 235)
-    outputs.borders << enemy_rect.merge(**Render.color(border_color), a: border_alpha)
-    outputs.sprites << Render.solid(
-      {
-        x: enemy_rect[:x] + inset,
-        y: enemy_rect[:y] + inset,
-        w: enemy_rect[:w] - inset * 2,
-        h: enemy_rect[:h] - inset * 2
-      },
-      :void,
-      a: 210
+  def set_state next_state
+    return if @state == next_state
+
+    if @state == :patrol && next_state == :chase
+      @light_fade_started_at = Kernel.tick_count
+      @light_fade_direction = :in
+    elsif @state == :chase && next_state == :patrol
+      @light_fade_started_at = Kernel.tick_count
+      @light_fade_direction = :out
+    end
+    @state = next_state
+    @animation_started_at = Kernel.tick_count
+  end
+
+  def enemy_sprite
+    chasing = @state == :chase
+    frame_hold = chasing ? CHASE_FRAME_HOLD : PATROL_FRAME_HOLD
+    frame_index = @animation_started_at.frame_index(
+      count: FRAME_COUNT,
+      hold_for: frame_hold,
+      repeat: true
+    ) || 0
+
+    {
+      path: chasing ? CHASE_SPRITE_PATH : PATROL_SPRITE_PATH,
+      tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
+      tile_y: frame_index.idiv(FRAME_COLUMNS) * FRAME_SIZE,
+      tile_w: FRAME_SIZE,
+      tile_h: FRAME_SIZE
+    }
+  end
+
+  def render_light args, outputs = args.outputs, camera = nil
+    alpha = light_alpha
+    return if alpha <= 0
+
+    light_center = camera ? camera.screen_point(center) : center
+    outputs.sprites << light_center.merge(
+      path: "sprites/mask.png",
+      w: LIGHT_SIZE,
+      h: LIGHT_SIZE,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      r: 255,
+      g: 0,
+      b: 0,
+      a: alpha,
+      blendmode: Render::HOLE_PUNCH_BLENDMODE
     )
+  end
+
+  def light_alpha
+    return 255 if @state == :chase && @light_fade_direction != :in
+    return 0 unless @light_fade_started_at
+
+    elapsed = Kernel.tick_count - @light_fade_started_at
+    progress = (elapsed * 255 / LIGHT_FADE_FRAMES).clamp(0, 255)
+    @light_fade_direction == :in ? progress : 255 - progress
   end
 
   def close_to_player? player
@@ -588,6 +679,17 @@ end
 
 class Player
   SIZE = 256
+  IDLE_SPRITE_PATH = "sprites/player_idle.png"
+  IDLE_FRAME_COUNT = 16
+  IDLE_FRAME_COLUMNS = 4
+  IDLE_FRAME_SIZE = 1024
+  IDLE_FRAME_HOLD = 5
+  RUN_SPRITE_PATH = "sprites/player_run.png"
+  RUN_FRAME_COUNT = 4
+  RUN_FRAME_COLUMNS = 2
+  RUN_FRAME_SIZE = 1024
+  RUN_FRAME_HOLD = 10
+  MOVING_EPSILON = 0.1
   SPEED = 4.5 * WorldScale::FACTOR
   ACCELERATION = 0.4
   LIGHT_OSCILLATION_AMOUNT = 36
@@ -604,6 +706,9 @@ class Player
     @w = SIZE
     @h = SIZE
     @light_size = 1024
+    @idle_started_at = Kernel.tick_count
+    @run_started_at = Kernel.tick_count
+    @facing_left = false
   end
 
   def rect
@@ -624,6 +729,7 @@ class Player
 
     @dx = @dx.lerp(target_dx, ACCELERATION)
     @dy = @dy.lerp(target_dy, ACCELERATION)
+    @facing_left = @dx < -MOVING_EPSILON if @dx.abs > MOVING_EPSILON
 
     bounds ||= {
       x: WorldScale.value(52),
@@ -677,7 +783,33 @@ class Player
 
   def render args, outputs = args.outputs, camera = nil, alpha = 255
     player_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << player_rect.merge(path: "sprites/t-pose/white.png", **Render.color(:player), a: alpha)
+    outputs.sprites << player_rect.merge(player_sprite).merge(a: alpha)
+  end
+
+  def player_sprite
+    moving? ? animation_sprite(RUN_SPRITE_PATH, RUN_FRAME_COUNT, RUN_FRAME_COLUMNS, RUN_FRAME_SIZE, RUN_FRAME_HOLD, @run_started_at) :
+              animation_sprite(IDLE_SPRITE_PATH, IDLE_FRAME_COUNT, IDLE_FRAME_COLUMNS, IDLE_FRAME_SIZE, IDLE_FRAME_HOLD, @idle_started_at)
+  end
+
+  def animation_sprite path, frame_count, frame_columns, frame_size, frame_hold, started_at
+    frame_index = started_at.frame_index(
+      count: frame_count,
+      hold_for: frame_hold,
+      repeat: true
+    ) || 0
+
+    {
+      path: path,
+      tile_x: frame_index % frame_columns * frame_size,
+      tile_y: frame_index.idiv(frame_columns) * frame_size,
+      tile_w: frame_size,
+      tile_h: frame_size,
+      flip_horizontally: @facing_left
+    }
+  end
+
+  def moving?
+    @dx.abs > MOVING_EPSILON || @dy.abs > MOVING_EPSILON
   end
 
   def render_light args, outputs = args.outputs, camera = nil

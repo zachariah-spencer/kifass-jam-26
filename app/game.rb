@@ -778,7 +778,7 @@ class Game
       return
     end
 
-    @player.light_size = 4096 if word == "LAMP"
+    @player.light_size = 1096 if word == "LAMP"
 
     @learned_words.delete(word)
     @sacrificed_words << word unless @sacrificed_words.include?(word)

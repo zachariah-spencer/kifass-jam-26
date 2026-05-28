@@ -1,5 +1,7 @@
 class Interactable
   LIGHT_OSCILLATION_FRAMES = 72
+  PASSIVE_LIGHT_ALPHA = 50
+  PASSIVE_LIGHT_PADDING = WorldScale.value(96)
 
   attr_accessor :x, :y
   attr_reader :id, :w, :h, :word
@@ -70,6 +72,17 @@ class Interactable
   end
 
   def render_light args, outputs = args.outputs, camera = nil
+    light_center = camera ? camera.screen_point(center) : center
+    light_size = [@w, @h].max + PASSIVE_LIGHT_PADDING
+    outputs.sprites << light_center.merge(
+      path: "sprites/mask.png",
+      w: light_size,
+      h: light_size,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      a: PASSIVE_LIGHT_ALPHA,
+      blendmode: Render::HOLE_PUNCH_BLENDMODE
+    )
   end
 
   def oscillating_light_size base_size, amount, phase = 0
@@ -81,6 +94,8 @@ end
 class Lamp < Interactable
   SIZE = WorldScale.value(28)
   LIGHT_SIZE = 512
+  SACRIFICED_LIGHT_SIZE = 512
+  SACRIFICED_LIGHT_ALPHA = 70
   LIGHT_OSCILLATION_AMOUNT = 28
 
   def initialize x, y, id
@@ -101,8 +116,8 @@ class Lamp < Interactable
     return if sacrificed?
 
     outputs.sprites << {
-      x: lamp_rect[:x] + 8,
-      y: lamp_rect[:y] + 8,
+      x: lamp_rect[:x] + 16,
+      y: lamp_rect[:y] + 16,
       w: 12,
       h: 12,
       path: "sprites/circle/yellow.png",
@@ -111,16 +126,15 @@ class Lamp < Interactable
   end
 
   def render_light args, outputs = args.outputs, camera = nil
-    return if sacrificed?
-
     light_center = camera ? camera.screen_point(center) : center
-    light_size = oscillating_light_size(LIGHT_SIZE, LIGHT_OSCILLATION_AMOUNT, @x + @y)
+    light_size = sacrificed? ? SACRIFICED_LIGHT_SIZE : oscillating_light_size(LIGHT_SIZE, LIGHT_OSCILLATION_AMOUNT, @x + @y)
     outputs.sprites << light_center.merge(
       path: "sprites/mask.png",
       w: light_size,
       h: light_size,
       anchor_x: 0.5,
       anchor_y: 0.5,
+      a: sacrificed? ? SACRIFICED_LIGHT_ALPHA : 255,
       blendmode: Render::HOLE_PUNCH_BLENDMODE
     )
   end

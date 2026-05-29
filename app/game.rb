@@ -55,6 +55,12 @@ class Game
   BELL_STUN_FRAMES = 3.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   HALL_BELL_GATE = { x: G[25], y: G[37], w: G[2], h: G[3] }
+  LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate.png"
+  LOCKED_GATE_FRAME_COUNT = 9
+  LOCKED_GATE_FRAME_COLUMNS = 3
+  LOCKED_GATE_FRAME_W = 512
+  LOCKED_GATE_FRAME_H = 768
+  LOCKED_GATE_FRAME_HOLD = 5
   SANCTUM_WALL_X = G[64]
   SANCTUM_GATE_H = G[10]
   SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: G[36], w: G[2], h: SANCTUM_GATE_H }
@@ -114,6 +120,10 @@ class Game
     @pointer_tap = nil
     @pointer_drag_vector = nil
     @env_tile_cache = {}
+    @key_gate_animation_started_at = nil
+    @key_gate_animation_direction = nil
+    @key_gate_animation_from_frame = 0
+    @key_gate_frame = 0
     @ending_sequence_triggered = false
     @ending_phase = nil
     @ending_phase_started_at = nil
@@ -432,7 +442,10 @@ class Game
   def grant_key_object
     return set_interaction_text("The key has already been sacrificed.") if word_sacrificed?("KEY")
 
-    @learned_words << "KEY" unless @learned_words.include?("KEY")
+    unless @learned_words.include?("KEY")
+      @learned_words << "KEY"
+      start_key_gate_animation(:open)
+    end
     @learned_object_ids << :archive_key unless @learned_object_ids.include?(:archive_key)
     @learned_word_sources["KEY"] = :archive_key
     set_interaction_text("Debug: you remember that this is a KEY.")
@@ -612,6 +625,30 @@ class Game
     @sacrificed_words.include?(word)
   end
 
+  def start_key_gate_animation direction
+    update_key_gate_frame
+    @key_gate_animation_started_at = Kernel.tick_count
+    @key_gate_animation_direction = direction
+    @key_gate_animation_from_frame = @key_gate_frame
+  end
+
+  def update_key_gate_frame
+    return unless @key_gate_animation_started_at && @key_gate_animation_direction
+
+    elapsed_frames = (Kernel.tick_count - @key_gate_animation_started_at).idiv(LOCKED_GATE_FRAME_HOLD)
+    if @key_gate_animation_direction == :open
+      @key_gate_frame = (@key_gate_animation_from_frame + elapsed_frames).clamp(0, LOCKED_GATE_FRAME_COUNT - 1)
+    else
+      @key_gate_frame = (@key_gate_animation_from_frame - elapsed_frames).clamp(0, LOCKED_GATE_FRAME_COUNT - 1)
+    end
+
+    target_frame = @key_gate_animation_direction == :open ? LOCKED_GATE_FRAME_COUNT - 1 : 0
+    return unless @key_gate_frame == target_frame
+
+    @key_gate_animation_started_at = nil
+    @key_gate_animation_direction = nil
+  end
+
   def ending_sequence_triggered?
     @ending_sequence_triggered
   end
@@ -747,7 +784,8 @@ class Game
     return interactable.interaction_text if @learned_object_ids.include?(interactable.id)
 
     unless @learned_words.include?(interactable.word)
-      @learned_words << interactable.word 
+      @learned_words << interactable.word
+      start_key_gate_animation(:open) if interactable.word == "KEY"
       @player.light_size = 2048 if interactable.id == :lamp
       show_bell_tooltip if interactable.word == "BELL"
     end
@@ -790,6 +828,7 @@ class Game
     end
 
     @player.light_size = 1096 if word == "LAMP"
+    start_key_gate_animation(:close) if word == "KEY"
 
     @learned_words.delete(word)
     @sacrificed_words << word unless @sacrificed_words.include?(word)
@@ -1245,7 +1284,7 @@ class Game
       end
     )
 
-    render_key_gate(HALL_BELL_GATE, outputs) if current_room.id == :hall
+    render_hall_locked_gate(outputs) if current_room.id == :hall
     render_key_gate(SANCTUM_KEY_GATE, outputs) if current_room.id == :sanctum
   end
 
@@ -1419,6 +1458,19 @@ class Game
       :brass,
       size_enum: -2,
       alignment_enum: 1
+    )
+  end
+
+  def render_hall_locked_gate outputs
+    update_key_gate_frame
+
+    gate_rect = @camera.screen_rect(HALL_BELL_GATE)
+    outputs.sprites << gate_rect.merge(
+      path: LOCKED_GATE_SPRITE_PATH,
+      tile_x: @key_gate_frame % LOCKED_GATE_FRAME_COLUMNS * LOCKED_GATE_FRAME_W,
+      tile_y: @key_gate_frame.idiv(LOCKED_GATE_FRAME_COLUMNS) * LOCKED_GATE_FRAME_H,
+      tile_w: LOCKED_GATE_FRAME_W,
+      tile_h: LOCKED_GATE_FRAME_H
     )
   end
 

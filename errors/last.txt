@@ -1,8 +1,9 @@
-* EXCEPTION:
-* ERROR: Exception while requiring app/main.rb.
-* ERROR: Exception while requiring app/game.rb.
-codegen error
-
+* EXCEPTION: 'initialize': wrong number of arguments (6 for 5)
 ** Backtrace:
-*** app/main.rb:4
-** Backtrace:
+*** app/entities/exit.rb:12:in initialize
+*** app/game/core.rb:170:in build_hall_room
+*** app/game/core.rb:146:in build_rooms
+*** app/game/core.rb:96:in restart
+*** app/scenes.rb:44:in tick
+*** app/root_scene.rb:29:in tick
+*** app/main.rb:13:in tick

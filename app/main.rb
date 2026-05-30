@@ -1,9 +1,9 @@
-require "app/rendering.rb"
-require "app/camera.rb"
-require "app/entities.rb"
-require "app/game.rb"
-require "app/scenes.rb"
-require "app/root_scene.rb"
+require_relative "rendering.rb"
+require_relative "camera.rb"
+require_relative "entities.rb"
+require_relative "game.rb"
+require_relative "scenes.rb"
+require_relative "root_scene.rb"
 
 $root_scene = nil
 

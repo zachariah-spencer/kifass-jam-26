@@ -1,8 +1,8 @@
 * EXCEPTION:
 * ERROR: Exception while requiring app/main.rb.
-* ERROR: Exception while requiring app/rendering.rb.
+* ERROR: Exception while requiring app/game.rb.
 codegen error
 
 ** Backtrace:
-*** app/main.rb:1
+*** app/main.rb:4
 ** Backtrace:

@@ -59,6 +59,19 @@ class Game
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
   BELL_STUN_FRAMES = 3.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
+  MECHANIC_FEEDBACK_FRAMES = BELL_STUN_FRAMES
+  LEARNED_WORD_MESSAGES = {
+    "BELL" => BELL_TOOLTIP_TEXT,
+    "KEY" => "You hear the clanging of metal gates opening nearby.",
+    "MIRROR" => "A series of paths reflect along the ground in the mirror, guiding you safely through the void.",
+    "LAMP" => "The dark is thrust away from you, illuminating the space."
+  }
+  SACRIFICE_CONSEQUENCE_MESSAGES = {
+    "BELL" => "The silence is deafening. Nothing can stop what hunts you.",
+    "KEY" => "The metal gates forgets what their locks were for, slamming shut.",
+    "MIRROR" => "The reflected path fades from memory.",
+    "LAMP" => "The dark invades the space."
+  }
   HALL_BELL_GATE = { x: G[25], y: G[37], w: G[2], h: G[3] }
   LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate.png"
   FINAL_LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate_final.png"
@@ -124,8 +137,8 @@ class Game
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
     @interaction_scramble_order = nil
-    @bell_tooltip_shown = false
-    @bell_tooltip_until = nil
+    @mechanic_feedback_text = nil
+    @mechanic_feedback_until = nil
     @pointer_gesture = nil
     @touch_gestures = {}
     @touch_movement_id = nil
@@ -801,14 +814,16 @@ class Game
     return interactable.interaction_text unless interactable.word
     return interactable.interaction_text if @learned_object_ids.include?(interactable.id)
 
-    unless @learned_words.include?(interactable.word)
+    first_learned_word = !@learned_words.include?(interactable.word)
+    if first_learned_word
       @learned_words << interactable.word
       start_key_gate_animation(:open) if interactable.word == "KEY"
       @player.light_size = 2048 if interactable.id == :lamp
-      show_bell_tooltip if interactable.word == "BELL"
+      show_mechanic_feedback(LEARNED_WORD_MESSAGES[interactable.word])
     end
     @learned_object_ids << interactable.id
     @learned_word_sources[interactable.word] = interactable.id
+
     "#{interactable.interaction_text} You remember that this is a #{interactable.word}."
   end
 
@@ -871,14 +886,15 @@ class Game
     @active_altar.sacrifice! if @active_altar
     @camera.shake!
     close_altar
+    show_mechanic_feedback(SACRIFICE_CONSEQUENCE_MESSAGES[word])
     set_interaction_text("You sacrificed #{word}.")
   end
 
-  def show_bell_tooltip
-    return if @bell_tooltip_shown
+  def show_mechanic_feedback text
+    return unless text
 
-    @bell_tooltip_shown = true
-    @bell_tooltip_until = Kernel.tick_count + BELL_STUN_FRAMES
+    @mechanic_feedback_text = text
+    @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FRAMES
   end
 
   def unlock_exits_for altar_id
@@ -1573,19 +1589,24 @@ class Game
     if @interaction_text
       args.outputs.labels << Render.label(640, 664, visible_interaction_text, :ash, size_enum: 1, alignment_enum: 1)
     end
-    render_bell_tooltip(args)
+    render_mechanic_feedback(args)
     render_altar(args) if @altar_open
     args.outputs.labels << Render.label(36, 40, "Press R to forget it all...", :ash, size_enum: -1)
   end
 
-  def render_bell_tooltip args
-    return unless @bell_tooltip_until
-    return if Kernel.tick_count >= @bell_tooltip_until
+  def render_mechanic_feedback args
+    return unless @mechanic_feedback_text && @mechanic_feedback_until
+    return if Kernel.tick_count >= @mechanic_feedback_until
 
-    panel = { x: 286, y: 92, w: 708, h: 44 }
+    lines = @mechanic_feedback_text.wrapped_lines(76)
+    return if lines.empty?
+
+    panel = { x: 286, y: 86, w: 708, h: 24 + lines.length * 24 }
     args.outputs.sprites << Render.solid(panel, :void, a: 210)
-    args.outputs.borders << panel.merge(**Render.color(:brass), a: 220)
-    args.outputs.labels << Render.label(640, 120, BELL_TOOLTIP_TEXT, :flame, size_enum: 0, alignment_enum: 1)
+    args.outputs.borders << panel.merge(**Render.color(:ember), a: 220)
+    lines.each_with_index do |line, index|
+      args.outputs.labels << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1)
+    end
   end
 
   def render_learned_words args

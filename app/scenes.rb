@@ -74,7 +74,7 @@ class NameEntryScene < BaseScene
   MEMORY_HINT_DELAY_FRAMES = 1.seconds
   THANKS_LINES = [
     "Thank you, %{name}...",
-    "Our identities and our memories of them are what make us, after all..."
+    "Our identities and our memories of them are what shape us, after all..."
   ]
   MEMORY_HINT_LINES = [
     "Your memory has failed you in a world where remembrance is everything.",

@@ -27,11 +27,19 @@
 
 - The intended design is that every non-final sacrifice is valid but consequential. Avoid hidden required sacrifice orders that force a full reset.
 
-- When a sacrifice changes a mechanic, immediately show a short consequence message:
+- When a sacrifice changes a mechanic, immediately show a short consequence message using the ember text box system that learning BELL uses that appears near the bottom of the screen:
   - BELL: "The silence is deafening. Nothing can stop what hunts you."
   - KEY: "The metal gates forgets what their locks were for, slamming shut."
   - MIRROR: "The reflected path fades from memory."
-  - LAMP: "The dark leans closer."
+  - LAMP: "The dark invades the space."
+
+- When a word is first learned each word should display a unique message explaining what benefit is gained by knowing that word, similar to the way BELL works right now.
+  - BELL: Can stay the same for now.
+  - KEY: "You hear the clanging of metal gates opening nearby."
+  - MIRROR: "A series of paths reflect along the ground in the mirror, guiding you safely through the void."
+  - LAMP: "The dark is thrust away from you, illuminating the space."
+
+- Take particular care not to pass any nil values into outputs
 
 ## KEY, Gates, And Sanctum
 

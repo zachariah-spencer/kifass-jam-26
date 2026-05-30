@@ -14,6 +14,7 @@ end
 
 module Render
   TRANSITION_FRAMES = 28
+  LABEL_FONT_PATH = "sprites/sketch.ttf"
   HOLE_PUNCH_BLENDMODE = Numeric.compose_blendmode(
     BLENDFACTOR_ZERO,
     BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
@@ -25,7 +26,8 @@ module Render
 
   PALETTE = {
     void: { r: 10, g: 9, b: 14 },
-    stone: { r: 39, g: 22, b: 10 },
+    # stone: { r: 39, g: 22, b: 10 },
+    stone: { r: 0, g: 0, b: 0 },
     wall: { r: 26, g: 26, b: 34 },
     ash: { r: 170, g: 170, b: 170 },
     ember: { r: 210, g: 92, b: 54 },
@@ -49,7 +51,7 @@ module Render
   end
 
   def self.label x, y, text, color_name = :ash, overrides = {}
-    { x: x, y: y, text: text, **PALETTE[color_name], **overrides}
+    { x: x, y: y, text: text, font: LABEL_FONT_PATH, **PALETTE[color_name], **overrides}
   end
 
   def self.fullscreen color_name = :void, overrides = {}

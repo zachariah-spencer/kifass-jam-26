@@ -1,23 +1,8 @@
-* EXCEPTION:
-* ERROR: :each method missing on ~Class~.
-
-#+begin_src ~Class#inspect~
-NIL
-#+end_src ~Class#inspect~
-
-
-
-The method named
-  :each
-doesn't exist on [NilClass].
-
-(suggestions above)
+* EXCEPTION: 'merge': wrong number of arguments (2 for 1)
 ** Backtrace:
-*** app/game.rb:1347:in render_env_tile_patches
-*** app/game.rb:1314:in render_env_tiles
-*** app/game.rb:1243:in render_room_barriers
-*** app/game.rb:1176:in render_lit_scene
-*** app/game.rb:1145:in render
-*** app/scenes.rb:380:in tick
+*** app/scenes.rb:227:in render_name_field
+*** app/scenes.rb:218:in render_prompt_and_keyboard
+*** app/scenes.rb:209:in render
+*** app/scenes.rb:106:in tick
 *** app/root_scene.rb:29:in tick
 *** app/main.rb:13:in tick

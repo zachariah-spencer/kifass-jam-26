@@ -295,6 +295,11 @@ end
 class Exit < Interactable
   W = WorldScale.value(92)
   H = WorldScale.value(92)
+  SPRITE_PATH = "sprites/door.png"
+  FRAME_COUNT = 8
+  FRAME_COLUMNS = 3
+  FRAME_SIZE = 1024
+  FRAME_HOLD = 5
 
   attr_reader :target_room_id, :target_spawn_id, :unlock_altar_id
 
@@ -304,6 +309,7 @@ class Exit < Interactable
     @target_spawn_id = target_spawn_id
     @unlock_altar_id = unlock_altar_id
     @locked = !!unlock_altar_id
+    @unlocked_at = @locked ? nil : Kernel.tick_count
   end
 
   def interact game
@@ -321,7 +327,10 @@ class Exit < Interactable
   end
 
   def unlock!
+    return unless @locked
+
     @locked = false
+    @unlocked_at = Kernel.tick_count
   end
 
   def interaction_text
@@ -332,20 +341,29 @@ class Exit < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     exit_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << Render.solid(exit_rect, :void, a: locked? ? 245 : 210)
-    outputs.borders << exit_rect.merge(**Render.color(locked? ? :brass : :ember))
-    return unless locked?
+    outputs.sprites << exit_sprite(exit_rect)
+  end
 
-    outputs.sprites << Render.solid(
-      {
-        x: exit_rect[:x] + 18,
-        y: exit_rect[:y] + 18,
-        w: exit_rect[:w] - 36,
-        h: exit_rect[:h] - 36
-      },
-      :wall,
-      a: 190
+  def exit_sprite exit_rect
+    frame_index = exit_frame_index
+
+    exit_rect.merge(
+      path: SPRITE_PATH,
+      tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
+      tile_y: frame_index.idiv(FRAME_COLUMNS) * FRAME_SIZE,
+      tile_w: FRAME_SIZE,
+      tile_h: FRAME_SIZE
     )
+  end
+
+  def exit_frame_index
+    return 0 unless @unlocked_at
+
+    @unlocked_at.frame_index(
+      count: FRAME_COUNT,
+      hold_for: FRAME_HOLD,
+      loop: false
+    ) || FRAME_COUNT - 1
   end
 end
 
@@ -382,8 +400,11 @@ class Mirror < Interactable
 end
 
 class ArchiveKey < Interactable
-  W = WorldScale.value(42)
+  SPRITE_PATH = "sprites/key.png"
+  SPRITE_W = 512
+  SPRITE_H = 1025
   H = WorldScale.value(24)
+  W = ((H * SPRITE_W / SPRITE_H).round)
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "KEY")
@@ -399,42 +420,22 @@ class ArchiveKey < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     key_rect = camera ? camera.screen_rect(rect) : rect
-    color = sacrificed? ? :ash : :brass
-    outputs.sprites << Render.solid(
-      {
-        x: key_rect[:x],
-        y: key_rect[:y] + key_rect[:h] / 2 - 4,
-        w: key_rect[:w],
-        h: 8
-      },
-      color,
-      a: sacrificed? ? 95 : 230
-    )
-    outputs.sprites << {
-      x: key_rect[:x],
-      y: key_rect[:y],
-      w: key_rect[:h],
-      h: key_rect[:h],
-      path: "sprites/circle/yellow.png",
-      **Render.color(color),
-      a: sacrificed? ? 95 : 230
-    }
-    outputs.sprites << Render.solid(
-      {
-        x: key_rect[:x] + key_rect[:w] - 12,
-        y: key_rect[:y],
-        w: 6,
-        h: key_rect[:h] / 2
-      },
-      color,
-      a: sacrificed? ? 95 : 230
+    outputs.sprites << key_rect.merge(
+      path: SPRITE_PATH,
+      tile_x: 0,
+      tile_y: 0,
+      tile_w: SPRITE_W,
+      tile_h: SPRITE_H,
+      a: sacrificed? ? 95 : 255
     )
   end
 end
 
 class Bell < Interactable
-  W = WorldScale.value(60)
-  H = WorldScale.value(54)
+  SPRITE_PATH = "sprites/bell.png"
+  SPRITE_SIZE = 1024
+  W = 256
+  H = 256
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "BELL")
@@ -450,38 +451,13 @@ class Bell < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     bell_rect = camera ? camera.screen_rect(rect) : rect
-    color = sacrificed? ? :ash : :brass
-
-    3.times do |index|
-      bell = {
-        x: bell_rect[:x] + index * bell_rect[:w] / 3 + 5,
-        y: bell_rect[:y] + 10,
-        w: bell_rect[:w] / 3 - 8,
-        h: bell_rect[:h] - 16
-      }
-      outputs.sprites << Render.solid(bell, color, a: sacrificed? ? 85 : 220)
-      outputs.borders << bell.merge(**Render.color(sacrificed? ? :ash : :flame), a: sacrificed? ? 90 : 180)
-      outputs.sprites << Render.solid(
-        {
-          x: bell[:x] + bell[:w] / 2 - 2,
-          y: bell[:y] - 5,
-          w: 4,
-          h: 8
-        },
-        color,
-        a: sacrificed? ? 85 : 220
-      )
-    end
-
-    outputs.sprites << Render.solid(
-      {
-        x: bell_rect[:x],
-        y: bell_rect[:y] + bell_rect[:h] - 8,
-        w: bell_rect[:w],
-        h: 6
-      },
-      :wall,
-      a: 230
+    outputs.sprites << bell_rect.merge(
+      path: SPRITE_PATH,
+      tile_x: 0,
+      tile_y: 0,
+      tile_w: SPRITE_SIZE,
+      tile_h: SPRITE_SIZE,
+      a: sacrificed? ? 95 : 255
     )
   end
 end
@@ -708,6 +684,7 @@ class Player
     @light_size = 1024
     @idle_started_at = Kernel.tick_count
     @run_started_at = Kernel.tick_count
+    @animation_override = nil
     @facing_left = false
   end
 
@@ -777,6 +754,24 @@ class Player
     @dy = 0
   end
 
+  def force_run_animation!
+    @animation_override = :run
+    @run_started_at = Kernel.tick_count
+  end
+
+  def force_idle_animation!
+    @animation_override = :idle
+    @idle_started_at = Kernel.tick_count
+  end
+
+  def clear_animation_override!
+    @animation_override = nil
+  end
+
+  def face_toward_x target_x
+    @facing_left = target_x < @x
+  end
+
   def center
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
@@ -787,7 +782,8 @@ class Player
   end
 
   def player_sprite
-    moving? ? animation_sprite(RUN_SPRITE_PATH, RUN_FRAME_COUNT, RUN_FRAME_COLUMNS, RUN_FRAME_SIZE, RUN_FRAME_HOLD, @run_started_at) :
+    running = @animation_override == :run || (!@animation_override && moving?)
+    running ? animation_sprite(RUN_SPRITE_PATH, RUN_FRAME_COUNT, RUN_FRAME_COLUMNS, RUN_FRAME_SIZE, RUN_FRAME_HOLD, @run_started_at) :
               animation_sprite(IDLE_SPRITE_PATH, IDLE_FRAME_COUNT, IDLE_FRAME_COLUMNS, IDLE_FRAME_SIZE, IDLE_FRAME_HOLD, @idle_started_at)
   end
 

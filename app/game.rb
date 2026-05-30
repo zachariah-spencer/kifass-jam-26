@@ -25,6 +25,10 @@ class Game
   WORLD_W = G[130]
   WORLD_H = G[82]
   PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
+  LEFT_EXIT_X = G[8]
+  RIGHT_EXIT_X = G[122]
+  LEFT_EXIT_SPAWN_X = G[13]
+  RIGHT_EXIT_SPAWN_X = G[117]
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
@@ -56,14 +60,18 @@ class Game
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   HALL_BELL_GATE = { x: G[25], y: G[37], w: G[2], h: G[3] }
   LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate.png"
+  FINAL_LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate_final.png"
   LOCKED_GATE_FRAME_COUNT = 9
   LOCKED_GATE_FRAME_COLUMNS = 3
   LOCKED_GATE_FRAME_W = 512
   LOCKED_GATE_FRAME_H = 768
+  FINAL_LOCKED_GATE_FRAME_W = 512
+  FINAL_LOCKED_GATE_FRAME_H = 1280
   LOCKED_GATE_FRAME_HOLD = 5
   SANCTUM_WALL_X = G[64]
   SANCTUM_GATE_H = G[10]
   SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: G[36], w: G[2], h: SANCTUM_GATE_H }
+  SANCTUM_KEY_GATE_SPRITE = { x: SANCTUM_WALL_X - G[1], y: G[36], w: G[4], h: SANCTUM_GATE_H }
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
   SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
@@ -76,6 +84,10 @@ class Game
   ENV_TILE_S = 2
   ENV_TILE_E = 4
   ENV_TILE_N = 8
+  DUST_PARTICLE_DENSITY_PERCENT = 50
+  DUST_PARTICLE_CELL_SIZE = 256
+  DUST_PARTICLE_ALPHA_MIN = 42
+  DUST_PARTICLE_ALPHA_MAX = 96
 
   attr_accessor :player_name
   attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
@@ -149,7 +161,7 @@ class Game
       PLAY_AREA,
       {
         default: { x: WORLD_W / 2 - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: G[120] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
+        from_archive: { x: RIGHT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
         Bell.new(G[14] - Bell::W / 2, G[40] - Bell::H / 2, :hall_bells),
@@ -159,7 +171,7 @@ class Game
         Lamp.new(G[120] - Lamp::SIZE / 2, G[72] - Lamp::SIZE / 2, :lamp),
         Lamp.new(G[65] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
         Altar.new(G[65] - Altar::W / 2, G[36] - Altar::H / 2, :hall_altar),
-        Exit.new(G[125] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
+        Exit.new(RIGHT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
       ],
       hall_bell_alcove_walls
     )
@@ -183,8 +195,8 @@ class Game
       PLAY_AREA,
       {
         default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_hall: { x: G[10] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_sanctum: { x: G[123] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
+        from_hall: { x: LEFT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
+        from_sanctum: { x: RIGHT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
         Lamp.new(G[16] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
@@ -197,8 +209,8 @@ class Game
         Mirror.new(G[17] - Mirror::W / 2, G[49] - Mirror::H / 2, :archive_mirror),
         Altar.new(G[22] - Altar::W / 2, G[36] - Altar::H / 2, :archive_altar),
         ArchiveKey.new(G[72] - ArchiveKey::W / 2, G[70] - ArchiveKey::H / 2, :archive_key),
-        Exit.new(G[5] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
-        Exit.new(G[125] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
+        Exit.new(LEFT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
+        Exit.new(RIGHT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
       ]
     )
   end
@@ -211,7 +223,7 @@ class Game
       PLAY_AREA,
       {
         default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
+        from_archive: { x: LEFT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
       },
       [
         Lamp.new(G[18] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
@@ -220,7 +232,7 @@ class Game
         Altar.new(G[85] - Altar::W / 2, G[30] - Altar::H / 2, :sanctum_memory_altar),
         NameAltar.new(G[100] - NameAltar::W / 2, G[41] - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
         FinalDoor.new(G[120] - FinalDoor::W / 2, G[41] - FinalDoor::H / 2, :sanctum_final_door),
-        Exit.new(G[5] - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
+        Exit.new(LEFT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
       ],
       sanctum_walls
     )
@@ -228,11 +240,16 @@ class Game
 
   def sanctum_walls
     [
-      { x: SANCTUM_WALL_X, y: PLAY_AREA[:y], w: G[2], h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y] },
       {
-        x: SANCTUM_WALL_X,
+        x: SANCTUM_KEY_GATE_SPRITE[:x],
+        y: PLAY_AREA[:y],
+        w: SANCTUM_KEY_GATE_SPRITE[:w],
+        h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y]
+      },
+      {
+        x: SANCTUM_KEY_GATE_SPRITE[:x],
         y: SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h],
-        w: G[2],
+        w: SANCTUM_KEY_GATE_SPRITE[:w],
         h: PLAY_AREA[:y] + PLAY_AREA[:h] - (SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h])
       }
     ]
@@ -1012,8 +1029,10 @@ class Game
       set_ending_phase(:door_opens)
     when :door_opens
       prepare_ending_walk
+      @player.force_run_animation!
       set_ending_phase(:player_walks)
     when :player_walks
+      @player.force_idle_animation!
       set_ending_phase(:player_fades)
     when :player_fades
       set_ending_phase(:fade_black)
@@ -1091,6 +1110,7 @@ class Game
       x: door.center[:x] - @player.w / 2,
       y: door.center[:y] - @player.h / 2
     }
+    @player.face_toward_x(@ending_player_target[:x])
   end
 
   def update_ending_player_walk
@@ -1218,6 +1238,7 @@ class Game
     nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) unless input_locked? }
     @enemy.render(args, args.outputs[:scene], @camera) if @enemy.room_id == @current_room_id
     @player.render(args, args.outputs[:scene], @camera, player_alpha)
+    render_ambient_dust(args, args.outputs[:scene])
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
     @enemy.render_light(args, args.outputs[:darkness], @camera) if @enemy.room_id == @current_room_id
@@ -1233,6 +1254,65 @@ class Game
     else
       interactable.render(args, outputs, @camera)
     end
+  end
+
+  def render_ambient_dust args, outputs = args.outputs
+    visible = {
+      x: @camera.x,
+      y: @camera.y,
+      w: @camera.visible_w,
+      h: @camera.visible_h
+    }
+    min_col = (visible[:x] / DUST_PARTICLE_CELL_SIZE).floor
+    max_col = ((visible[:x] + visible[:w]) / DUST_PARTICLE_CELL_SIZE).ceil
+    min_row = (visible[:y] / DUST_PARTICLE_CELL_SIZE).floor
+    max_row = ((visible[:y] + visible[:h]) / DUST_PARTICLE_CELL_SIZE).ceil
+    tick = Kernel.tick_count
+
+    dust = []
+    (min_col..max_col).each do |col|
+      (min_row..max_row).each do |row|
+        seed = dust_particle_seed(col, row)
+        next unless seed % 100 < DUST_PARTICLE_DENSITY_PERCENT
+
+        particle = ambient_dust_particle(col, row, seed, tick)
+        screen_rect = @camera.screen_rect(particle)
+        next if screen_rect[:x] < -6 || screen_rect[:x] > Grid.w + 6
+        next if screen_rect[:y] < -6 || screen_rect[:y] > Grid.h + 6
+
+        dust << screen_rect.merge(
+          path: :solid,
+          r: 255,
+          g: 255,
+          b: 255,
+          a: particle[:a]
+        )
+      end
+    end
+    outputs.primitives << dust
+  end
+
+  def ambient_dust_particle col, row, seed, tick
+    phase = seed % 360
+    slow_phase = (tick + phase) * Math::PI * 2 / 420
+    fast_phase = (tick + phase * 3) * Math::PI * 2 / 260
+    base_x = col * DUST_PARTICLE_CELL_SIZE + seed % DUST_PARTICLE_CELL_SIZE
+    base_y = row * DUST_PARTICLE_CELL_SIZE + seed.idiv(7) % DUST_PARTICLE_CELL_SIZE
+    drift_y = (tick * (0.012 + (seed % 7) * 0.002)) % DUST_PARTICLE_CELL_SIZE
+    size = seed % 5 == 0 ? 10 : 8
+    alpha = DUST_PARTICLE_ALPHA_MIN + seed % (DUST_PARTICLE_ALPHA_MAX - DUST_PARTICLE_ALPHA_MIN)
+
+    {
+      x: base_x + Math.sin(slow_phase) * 18 + Math.sin(fast_phase) * 5,
+      y: base_y + Math.cos(slow_phase) * 12 + drift_y,
+      w: size,
+      h: size,
+      a: (alpha + Math.sin(fast_phase) * 18).to_i.clamp(DUST_PARTICLE_ALPHA_MIN, DUST_PARTICLE_ALPHA_MAX)
+    }
+  end
+
+  def dust_particle_seed col, row
+    ((col * 73_856_093) ^ (row * 19_349_663) ^ 83_492_791).abs
   end
 
   def final_door_open?
@@ -1285,7 +1365,7 @@ class Game
     )
 
     render_hall_locked_gate(outputs) if current_room.id == :hall
-    render_key_gate(SANCTUM_KEY_GATE, outputs) if current_room.id == :sanctum
+    render_sanctum_locked_gate(outputs) if current_room.id == :sanctum
   end
 
   def cached_env_tile_cells key
@@ -1442,35 +1522,37 @@ class Game
     ENV_TILE_PATH_TEMPLATE % mask
   end
 
-  def render_key_gate gate, outputs
-    gate_rect = @camera.screen_rect(gate)
-    if knows_word?("KEY")
-      outputs.borders << gate_rect.merge(**Render.color(:ember), a: 85)
-      return
-    end
-
-    outputs.sprites << Render.solid(gate_rect, :void, a: 245)
-    outputs.borders << gate_rect.merge(**Render.color(:brass), a: 235)
-    outputs.labels << Render.label(
-      gate_rect[:x] + gate_rect[:w] / 2,
-      gate_rect[:y] + gate_rect[:h] / 2 + 8,
-      "LOCK",
-      :brass,
-      size_enum: -2,
-      alignment_enum: 1
+  def render_hall_locked_gate outputs
+    render_locked_gate(
+      HALL_BELL_GATE,
+      outputs,
+      path: LOCKED_GATE_SPRITE_PATH,
+      frame_w: LOCKED_GATE_FRAME_W,
+      frame_h: LOCKED_GATE_FRAME_H
     )
   end
 
-  def render_hall_locked_gate outputs
+  def render_sanctum_locked_gate outputs
+    render_locked_gate(
+      SANCTUM_KEY_GATE_SPRITE,
+      outputs,
+      path: FINAL_LOCKED_GATE_SPRITE_PATH,
+      frame_w: FINAL_LOCKED_GATE_FRAME_W,
+      frame_h: FINAL_LOCKED_GATE_FRAME_H
+    )
+  end
+
+  def render_locked_gate gate, outputs, path:, frame_w:, frame_h:, reverse_frames: false
     update_key_gate_frame
 
-    gate_rect = @camera.screen_rect(HALL_BELL_GATE)
+    gate_rect = @camera.screen_rect(gate)
+    sprite_frame = reverse_frames ? LOCKED_GATE_FRAME_COUNT - 1 - @key_gate_frame : @key_gate_frame
     outputs.sprites << gate_rect.merge(
-      path: LOCKED_GATE_SPRITE_PATH,
-      tile_x: @key_gate_frame % LOCKED_GATE_FRAME_COLUMNS * LOCKED_GATE_FRAME_W,
-      tile_y: @key_gate_frame.idiv(LOCKED_GATE_FRAME_COLUMNS) * LOCKED_GATE_FRAME_H,
-      tile_w: LOCKED_GATE_FRAME_W,
-      tile_h: LOCKED_GATE_FRAME_H
+      path: path,
+      tile_x: sprite_frame % LOCKED_GATE_FRAME_COLUMNS * frame_w,
+      tile_y: sprite_frame.idiv(LOCKED_GATE_FRAME_COLUMNS) * frame_h,
+      tile_w: frame_w,
+      tile_h: frame_h
     )
   end
 
@@ -1492,14 +1574,14 @@ class Game
   def render_ui args
     return render_ending_ui(args) if ending_sequence_triggered? && @ending_phase != :sacrifice_message
 
-    args.outputs.labels << Render.label(36, 694, "PLAY SCENE", :ash, size_enum: 3)
+    # args.outputs.labels << Render.label(36, 694, "PLAY SCENE", :ash, size_enum: 3)
     render_learned_words(args)
     if @interaction_text
       args.outputs.labels << Render.label(640, 664, visible_interaction_text, :ash, size_enum: 1, alignment_enum: 1)
     end
     render_bell_tooltip(args)
     render_altar(args) if @altar_open
-    args.outputs.labels << Render.label(36, 40, "WASD / arrows move. Drag to move. Tap to interact. R resets. Esc returns to title.", :ash, size_enum: -1)
+    args.outputs.labels << Render.label(36, 40, "Press R to forget it all...", :ash, size_enum: -1)
   end
 
   def render_bell_tooltip args

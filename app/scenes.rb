@@ -48,10 +48,10 @@ class TitleScene < BaseScene
 
   def render
     alpha = title_fade_alpha
-    args.outputs.sprites << Render.fullscreen(:void)
-    args.outputs.labels << Render.label(640, 438, "EPITHET", :ash, size_enum: 8, alignment_enum: 1, a: alpha)
-    args.outputs.labels << Render.label(640, 284, "E / Enter / Click to begin", :ember, size_enum: 2, alignment_enum: 1, a: alpha)
-    args.outputs.labels << Render.label(640, 52, "WASD or arrows move. R resets. Esc returns here.", :ash, size_enum: -1, alignment_enum: 1, a: alpha)
+    args.outputs.sprites << Render.fullscreen(:stone)
+    args.outputs.labels << Render.label(640, 550, "EPITHET", :ash, size_enum: 128, alignment_enum: 1, a: alpha)
+    args.outputs.labels << Render.label(640, 284, "E / Enter / Click to begin", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+    args.outputs.labels << Render.label(620, 52, "Tap and Drag to Move                  Tap to Interact", :ash, size_enum: -1, alignment_enum: 1, a: alpha)
   end
 
   def title_fade_alpha
@@ -74,6 +74,9 @@ class NameEntryScene < BaseScene
   KEY_W = 58
   KEY_H = 42
   KEY_GAP = 10
+  CHARACTER_KEY_SHAKE_PIXELS = 1
+  CHARACTER_KEY_SHAKE_PERIOD_FRAMES = 240.0
+  KEY_PRESS_FEEDBACK_FRAMES = 1
   KEYBOARD_ROWS = [
     "QWERTYUIOP".chars,
     "ASDFGHJKL".chars,
@@ -94,6 +97,8 @@ class NameEntryScene < BaseScene
     @phase_started_at = Kernel.tick_count
     @name = ""
     @submitted_name = nil
+    @pressed_key_until = {}
+    @held_key_value = nil
   end
 
   def tick
@@ -121,6 +126,8 @@ class NameEntryScene < BaseScene
   end
 
   def handle_name_input
+    update_held_key_feedback
+
     typed = args.inputs.keyboard.key_down.char
     add_character(typed) if printable_character?(typed)
 
@@ -132,6 +139,8 @@ class NameEntryScene < BaseScene
 
     key = key_at(click)
     return unless key
+
+    @pressed_key_until[key[:value]] = Kernel.tick_count + KEY_PRESS_FEEDBACK_FRAMES
 
     case key[:value]
     when :space
@@ -196,7 +205,7 @@ class NameEntryScene < BaseScene
   end
 
   def render
-    args.outputs.sprites << Render.fullscreen(:void)
+    args.outputs.sprites << Render.fullscreen(:stone)
     render_prompt_and_keyboard
     render_thanks
   end
@@ -213,10 +222,9 @@ class NameEntryScene < BaseScene
   def render_name_field alpha
     return unless [:input, :ui_fade_out].include?(@phase)
 
-    field = { x: 420, y: 394, w: 440, h: 58 }
-    args.outputs.sprites << Render.solid(field, :wall, a: (170 * alpha / 255).clamp(0, 255))
-    args.outputs.borders << field.merge(**Render.color(:brass), a: alpha)
-    args.outputs.labels << Render.label(640, 433, @name, :ember, size_enum: 2, alignment_enum: 1, a: alpha)
+    field = { x: 420, y: 394, w: 440, h: 2 }
+    args.outputs.sprites << Render.solid(field, :ash, a: (170 * alpha / 255).clamp(0, 255))
+    args.outputs.labels << Render.label(640, 433, @name, :ash, size_enum: 2, alignment_enum: 1, a: alpha)
   end
 
   def render_keyboard alpha
@@ -225,10 +233,46 @@ class NameEntryScene < BaseScene
     keyboard_keys.each do |key|
       active = key[:value] != :submit || name_ready?
       key_alpha = active ? alpha : (alpha * 88 / 255)
-      args.outputs.sprites << Render.solid(key_rect(key), :wall, a: (180 * key_alpha / 255).clamp(0, 255))
-      args.outputs.borders << key_rect(key).merge(**Render.color(active ? :ember : :stone), a: key_alpha)
-      args.outputs.labels << Render.label(key[:x] + key[:w] / 2, key[:y] + 27, key[:text], active ? :ash : :stone, size_enum: -1, alignment_enum: 1, a: key_alpha)
+      shake = character_key_shake(key)
+      color = key_pressed?(key) ? :ember : (active ? :ash : :stone)
+      # args.outputs.sprites << Render.solid(key_rect(key), :wall, a: (180 * key_alpha / 255).clamp(0, 255))
+      # args.outputs.borders << key_rect(key).merge(**Render.color(active ? :ash : :stone), a: key_alpha)
+      args.outputs.labels << Render.label(key[:x] + key[:w] / 2 + shake[:x], key[:y] + 27 + shake[:y], key[:text], color, size_enum: -1, alignment_enum: 1, a: key_alpha)
     end
+  end
+
+  def key_pressed? key
+    key[:value] == @held_key_value || (@pressed_key_until[key[:value]] || 0) >= Kernel.tick_count
+  end
+
+  def update_held_key_feedback
+    @held_key_value = nil
+
+    held_point = held_pointer_point
+    return unless held_point
+
+    key = key_at(held_point)
+    @held_key_value = key[:value] if key
+  end
+
+  def held_pointer_point
+    return args.inputs.mouse.down if args.inputs.mouse.down
+    return args.inputs.mouse.held if args.inputs.mouse.held
+
+    touches = args.inputs.touch || {}
+    touch = touches.values.first
+    touch if touch
+  end
+
+  def character_key_shake key
+    return { x: 0, y: 0 } unless key[:value].is_a?(String) && @phase == :input
+
+    seed = key[:value].ord
+    phase = (Kernel.tick_count + seed * 7) / CHARACTER_KEY_SHAKE_PERIOD_FRAMES
+    {
+      x: Math.sin(phase * 2 * Math::PI) * CHARACTER_KEY_SHAKE_PIXELS,
+      y: Math.cos((phase * 2 + seed) * Math::PI) * CHARACTER_KEY_SHAKE_PIXELS
+    }
   end
 
   def render_thanks

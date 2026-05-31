@@ -238,6 +238,11 @@ class NameAltar < Altar
     game.open_altar(self)
   end
 
+  def render args, outputs = args.outputs, camera = nil
+    altar_rect = camera ? camera.screen_rect(rect) : rect
+    outputs.sprites << altar_sprite(altar_rect).merge(Render.color(:ember))
+  end
+
   def interaction_text
     return "The altar is spent." if sacrificed?
 
@@ -249,9 +254,16 @@ end
 class FinalDoor < Interactable
   W = WorldScale.value(118)
   H = WorldScale.value(188)
+  RENDER_SIZE = 512
+  SPRITE_PATH = "sprites/final_door.png"
+  FRAME_COUNT = 8
+  FRAME_COLUMNS = 3
+  FRAME_SIZE = 1024
+  FRAME_HOLD = 9
 
   def initialize x, y, id
     super(x, y, W, H, id: id)
+    @opened_at = nil
   end
 
   def interaction_text
@@ -259,36 +271,35 @@ class FinalDoor < Interactable
   end
 
   def render args, outputs = args.outputs, camera = nil, open = false
-    door_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << Render.solid(door_rect, :void, a: open ? 115 : 250)
-    outputs.borders << door_rect.merge(**Render.color(:flame), a: 235)
-
-    inner = {
-      x: door_rect[:x] + (open ? 34 : 14),
-      y: door_rect[:y] + 16,
-      w: open ? 20 : door_rect[:w] - 28,
-      h: door_rect[:h] - 32
-    }
-    outputs.sprites << Render.solid(inner, open ? :wall : :void, a: open ? 215 : 0)
-    outputs.borders << inner.merge(**Render.color(:brass), a: 210)
-    return if open
-
-    lock = {
-      x: door_rect[:x] + door_rect[:w] / 2 - 18,
-      y: door_rect[:y] + door_rect[:h] / 2 - 18,
-      w: 36,
-      h: 36
-    }
-    outputs.sprites << Render.solid(lock, :wall, a: 235)
-    outputs.borders << lock.merge(**Render.color(:flame), a: 220)
-    outputs.labels << Render.label(
-      door_rect[:x] + door_rect[:w] / 2,
-      door_rect[:y] + door_rect[:h] - 28,
-      "NAME",
-      :flame,
-      size_enum: -2,
-      alignment_enum: 1
+    door_rect = camera ? camera.screen_rect(render_rect) : render_rect
+    frame_index = current_frame_index(open)
+    outputs.sprites << door_rect.merge(
+      path: SPRITE_PATH,
+      tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
+      tile_y: frame_index.idiv(FRAME_COLUMNS) * FRAME_SIZE,
+      tile_w: FRAME_SIZE,
+      tile_h: FRAME_SIZE
     )
+  end
+
+  def render_rect
+    {
+      x: center[:x] - RENDER_SIZE / 2,
+      y: center[:y] - RENDER_SIZE / 2,
+      w: RENDER_SIZE,
+      h: RENDER_SIZE
+    }
+  end
+
+  def current_frame_index open
+    unless open
+      @opened_at = nil
+      return 0
+    end
+
+    @opened_at ||= Kernel.tick_count
+    frame_index = (Kernel.tick_count - @opened_at).idiv(FRAME_HOLD)
+    frame_index.clamp(0, FRAME_COUNT - 1)
   end
 end
 

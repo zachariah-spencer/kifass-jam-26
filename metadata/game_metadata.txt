@@ -3,12 +3,12 @@
 # ==============================================
 
 # === Remove the pound sign and leading space for the properties below before publishing your game. ===
-# devid=zachariah-spencer
-# devtitle=Zingus
-# gameid=Epithet
-# gametitle=Epithet
-# version=0.1
-# icon=metadata/game_icon.png
+devid=zachariah-spencer
+devtitle=Zingus
+gameid=epithet
+gametitle=Epithet
+version=0.1
+icon=metadata/icon.png
 
 # ==============================================
 # === Flags available at all licensing tiers ===

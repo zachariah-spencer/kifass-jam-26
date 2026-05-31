@@ -1,8 +1,8 @@
-* EXCEPTION: 'merge': wrong number of arguments (2 for 1)
+* EXCEPTION:
+* ERROR: Exception while requiring app/main.rb.
+* ERROR: Exception while requiring app/game.rb.
+codegen error
+
 ** Backtrace:
-*** app/scenes.rb:227:in render_name_field
-*** app/scenes.rb:218:in render_prompt_and_keyboard
-*** app/scenes.rb:209:in render
-*** app/scenes.rb:106:in tick
-*** app/root_scene.rb:29:in tick
-*** app/main.rb:13:in tick
+*** app/main.rb:4
+** Backtrace:

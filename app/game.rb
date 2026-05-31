@@ -75,7 +75,6 @@ class Game
   SANCTUM_KEY_GATE_SPRITE = { x: SANCTUM_WALL_X - G[1], y: G[36], w: G[4], h: SANCTUM_GATE_H }
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
-  SANCTUM_ALTAR_WORDS = ["KEY", "BELL", "MIRROR"]
   PLAYER_NAME_WORD = "YOUR NAME"
   ENV_TILE_SIZE = 128
   ENV_TILE_PATH_TEMPLATE = "sprites/environment/tiles/tile%04d.png"
@@ -895,18 +894,8 @@ class Game
 
   def sacrificeable_words
     return sanctum_name_sacrifice_words if @active_altar && @active_altar.id == SANCTUM_FINAL_ALTAR_ID
-    return sanctum_regular_sacrifice_words if @active_altar && sanctum_regular_altar?(@active_altar)
-    return @learned_words.select { |word| archive_sacrifice_word?(word) } if @active_altar && @active_altar.id == :archive_altar
 
     @learned_words
-  end
-
-  def sanctum_regular_sacrifice_words
-    words = @learned_words.select { |word| SANCTUM_ALTAR_WORDS.include?(word) }
-    return words.select { |word| word == "KEY" } if sanctum_regular_altar_spent_count == 1 && !word_sacrificed?("KEY")
-    return words.reject { |word| word == "KEY" } if word_sacrificed?("KEY")
-
-    words
   end
 
   def sanctum_name_sacrifice_words
@@ -931,10 +920,6 @@ class Game
 
   def sanctum_final_altar_active?
     sanctum_regular_altar_spent_count == SANCTUM_REGULAR_ALTAR_IDS.length
-  end
-
-  def archive_sacrifice_word? word
-    word == "MIRROR" || word == "KEY"
   end
 
   def sacrificed_object? object_id

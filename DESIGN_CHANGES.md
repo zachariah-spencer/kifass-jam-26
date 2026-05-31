@@ -28,8 +28,8 @@
 - The intended design is that every non-final sacrifice is valid but consequential. Avoid hidden required sacrifice orders that force a full reset.
 
 - When a sacrifice changes a mechanic, immediately show a short consequence message:
-  - BELL: "The bells fall silent. Nothing will answer when it comes."
-  - KEY: "The gate forgets what its lock was for."
+  - BELL: "The silence is deafening. Nothing can stop what hunts you."
+  - KEY: "The metal gates forgets what their locks were for, slamming shut."
   - MIRROR: "The reflected path fades from memory."
   - LAMP: "The dark leans closer."
 

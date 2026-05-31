@@ -842,6 +842,7 @@ class Game
 
     active_altar_id = @active_altar ? @active_altar.id : nil
     if player_name_word?(word)
+      @camera.shake!
       @sacrificed_words << PLAYER_NAME_WORD unless @sacrificed_words.include?(PLAYER_NAME_WORD)
       @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
       @active_altar.sacrifice! if @active_altar
@@ -869,6 +870,7 @@ class Game
     unlock_exits_for(active_altar_id)
     @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
     @active_altar.sacrifice! if @active_altar
+    @camera.shake!
     close_altar
     set_interaction_text("You sacrificed #{word}.")
   end

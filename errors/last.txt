@@ -1,9 +1,29 @@
-* EXCEPTION: 'initialize': wrong number of arguments (6 for 5)
+* EXCEPTION:
+* ERROR: :< method missing on ~Array~.
+
+#+begin_src ~Array#inspect~
+[47, 5]
+#+end_src ~Array#inspect~
+
+
+
+The method named
+  :<
+with args
+  [[46, 5]]
+doesn't exist on [Array, #<Class:#<Array:0x7fbfd3dce580>>, Enumerable].
+
+(suggestions above)
 ** Backtrace:
-*** app/entities/exit.rb:12:in initialize
-*** app/game/core.rb:170:in build_hall_room
-*** app/game/core.rb:146:in build_rooms
-*** app/game/core.rb:96:in restart
-*** app/scenes.rb:44:in tick
+*** app/game/level_data.rb:31:in compact_rects
+*** app/game/level_data.rb:20:in compact_level
+*** app/game/level_data.rb:19:in compact_level
+*** app/game/level_data.rb:14:in write
+*** app/game/level_editor.rb:430:in save_level_data
+*** app/game/level_editor.rb:422:in commit_level_editor_change
+*** app/game/level_editor.rb:162:in update_level_editor_mouse
+*** app/game/level_editor.rb:123:in update_level_editor
+*** app/game/input.rb:4:in update
+*** app/scenes.rb:477:in tick
 *** app/root_scene.rb:29:in tick
 *** app/main.rb:13:in tick

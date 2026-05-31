@@ -1,5 +1,8 @@
 class Game
   def update args
+    return if handle_level_editor_toggle(args)
+    return update_level_editor(args) if level_editor_active?
+
     return update_ending_sequence(args) if ending_sequence_triggered?
     return update_reset_sequence if reset_sequence_active?
 
@@ -11,7 +14,7 @@ class Game
     handle_interaction(args)
     update_interaction_text
     interactables.each { |interactable| interactable.update(args) }
-    @player.update(args, current_room.play_area, active_barriers, pointer_movement_vector)
+    @player.update(args, nil, active_barriers, pointer_movement_vector)
     close_altar_if_player_left_range
     return if reset_player_if_off_archive_path
 

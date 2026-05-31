@@ -15,6 +15,8 @@ class Game
     @ending_phase_started_at = Kernel.tick_count
     clear_pointer_gesture
     @player.stop!
+    @ending_monsters_fade_started_at = Kernel.tick_count
+    @enemies.each(&:start_final_fade!)
   end
 
   def update_ending_sequence args

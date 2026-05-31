@@ -53,15 +53,11 @@ class Player
     @dy = @dy.lerp(target_dy, ACCELERATION)
     @facing_left = @dx < -MOVING_EPSILON if @dx.abs > MOVING_EPSILON
 
-    bounds ||= {
-      x: WorldScale.value(52),
-      y: WorldScale.value(58),
-      w: WorldScale.value(Grid.w - 104),
-      h: WorldScale.value(Grid.h - 116)
-    }
-    @x = (@x + @dx).clamp(bounds[:x], bounds[:x] + bounds[:w] - @w)
+    @x += @dx
+    @x = @x.clamp(bounds[:x], bounds[:x] + bounds[:w] - @w) if bounds
     resolve_barrier_collisions(:x, barriers)
-    @y = (@y + @dy).clamp(bounds[:y], bounds[:y] + bounds[:h] - @h)
+    @y += @dy
+    @y = @y.clamp(bounds[:y], bounds[:y] + bounds[:h] - @h) if bounds
     resolve_barrier_collisions(:y, barriers)
   end
 

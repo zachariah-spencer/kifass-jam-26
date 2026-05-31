@@ -1,0 +1,712 @@
+{
+  "schema": 1,
+  "tile_size": 128,
+  "rooms": {
+    "hall": {
+      "world": {
+        "cols": 130,
+        "rows": 82
+      },
+      "play_area": {
+        "col": 3,
+        "row": 3,
+        "w_cols": 124,
+        "h_rows": 76
+      },
+      "objects": [
+        {
+          "type": "bell",
+          "col": 14,
+          "row": 40,
+          "id": "hall_bells"
+        },
+        {
+          "type": "lamp",
+          "col": 18,
+          "row": 36,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 10,
+          "row": 33,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 120,
+          "row": 33,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 10,
+          "row": 10,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 120,
+          "row": 72,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 65,
+          "row": 55,
+          "id": "lamp"
+        },
+        {
+          "type": "altar",
+          "col": 65,
+          "row": 36,
+          "id": "hall_altar"
+        },
+        {
+          "type": "exit",
+          "col": 87,
+          "row": 35,
+          "id": "hall_to_archive",
+          "target_room": "archive",
+          "target_spawn": "from_hall",
+          "return_spawn_id": "from_archive",
+          "spawn_offset_cols": -5,
+          "spawn_offset_rows": 0,
+          "unlock_altar_id": "hall_altar"
+        }
+      ],
+      "barriers": [
+        {
+          "col": 5,
+          "row": 32,
+          "w_cols": 2,
+          "h_rows": 16
+        },
+        {
+          "col": 25,
+          "row": 32,
+          "w_cols": 2,
+          "h_rows": 5
+        },
+        {
+          "col": 25,
+          "row": 43,
+          "w_cols": 2,
+          "h_rows": 5
+        },
+        {
+          "col": 7,
+          "row": 46,
+          "w_cols": 18,
+          "h_rows": 2
+        }
+      ],
+      "safe_paths": [],
+      "locked_gates": []
+    },
+    "archive": {
+      "world": {
+        "cols": 130,
+        "rows": 82
+      },
+      "play_area": {
+        "col": 3,
+        "row": 3,
+        "w_cols": 124,
+        "h_rows": 76
+      },
+      "objects": [
+        {
+          "type": "lamp",
+          "col": 16,
+          "row": 55,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 65,
+          "row": 24,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 36,
+          "row": 56,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 55,
+          "row": 42,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 69,
+          "row": 31,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 86,
+          "row": 45,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 57,
+          "row": 67,
+          "id": "lamp"
+        },
+        {
+          "type": "mirror",
+          "col": 17,
+          "row": 49,
+          "id": "archive_mirror"
+        },
+        {
+          "type": "altar",
+          "col": 22,
+          "row": 36,
+          "id": "archive_altar"
+        },
+        {
+          "type": "archive_key",
+          "col": 72,
+          "row": 70,
+          "id": "archive_key"
+        },
+        {
+          "type": "exit",
+          "col": 8,
+          "row": 41,
+          "id": "archive_to_hall",
+          "target_room": "hall",
+          "target_spawn": "from_archive",
+          "return_spawn_id": "from_hall",
+          "spawn_offset_cols": 5,
+          "spawn_offset_rows": 0,
+          "unlock_altar_id": null
+        },
+        {
+          "type": "exit",
+          "col": 122,
+          "row": 41,
+          "id": "archive_to_sanctum",
+          "target_room": "sanctum",
+          "target_spawn": "from_archive",
+          "return_spawn_id": "from_sanctum",
+          "spawn_offset_cols": -5,
+          "spawn_offset_rows": 0,
+          "unlock_altar_id": "archive_altar"
+        }
+      ],
+      "barriers": [],
+      "safe_paths": [
+        {
+          "col": 88,
+          "row": 14,
+          "w_cols": 30,
+          "h_rows": 7
+        },
+        {
+          "col": 36,
+          "row": 17,
+          "w_cols": 22,
+          "h_rows": 4
+        },
+        {
+          "col": 60,
+          "row": 17,
+          "w_cols": 20,
+          "h_rows": 7
+        },
+        {
+          "col": 36,
+          "row": 21,
+          "w_cols": 4,
+          "h_rows": 14
+        },
+        {
+          "col": 54,
+          "row": 21,
+          "w_cols": 4,
+          "h_rows": 19
+        },
+        {
+          "col": 88,
+          "row": 21,
+          "w_cols": 6,
+          "h_rows": 11
+        },
+        {
+          "col": 112,
+          "row": 21,
+          "w_cols": 6,
+          "h_rows": 23
+        },
+        {
+          "col": 40,
+          "row": 24,
+          "w_cols": 6,
+          "h_rows": 2
+        },
+        {
+          "col": 60,
+          "row": 24,
+          "w_cols": 6,
+          "h_rows": 16
+        },
+        {
+          "col": 74,
+          "row": 24,
+          "w_cols": 6,
+          "h_rows": 8
+        },
+        {
+          "col": 80,
+          "row": 25,
+          "w_cols": 8,
+          "h_rows": 7
+        },
+        {
+          "col": 44,
+          "row": 26,
+          "w_cols": 8,
+          "h_rows": 2
+        },
+        {
+          "col": 44,
+          "row": 28,
+          "w_cols": 2,
+          "h_rows": 7
+        },
+        {
+          "col": 50,
+          "row": 28,
+          "w_cols": 2,
+          "h_rows": 32
+        },
+        {
+          "col": 40,
+          "row": 31,
+          "w_cols": 4,
+          "h_rows": 4
+        },
+        {
+          "col": 46,
+          "row": 31,
+          "w_cols": 4,
+          "h_rows": 4
+        },
+        {
+          "col": 5,
+          "row": 33,
+          "w_cols": 19,
+          "h_rows": 17
+        },
+        {
+          "col": 58,
+          "row": 34,
+          "w_cols": 2,
+          "h_rows": 6
+        },
+        {
+          "col": 47,
+          "row": 35,
+          "w_cols": 3,
+          "h_rows": 33
+        },
+        {
+          "col": 100,
+          "row": 36,
+          "w_cols": 12,
+          "h_rows": 8
+        },
+        {
+          "col": 118,
+          "row": 36,
+          "w_cols": 7,
+          "h_rows": 8
+        },
+        {
+          "col": 24,
+          "row": 38,
+          "w_cols": 11,
+          "h_rows": 7
+        },
+        {
+          "col": 66,
+          "row": 38,
+          "w_cols": 8,
+          "h_rows": 2
+        },
+        {
+          "col": 72,
+          "row": 40,
+          "w_cols": 2,
+          "h_rows": 8
+        },
+        {
+          "col": 57,
+          "row": 43,
+          "w_cols": 15,
+          "h_rows": 5
+        },
+        {
+          "col": 74,
+          "row": 43,
+          "w_cols": 4,
+          "h_rows": 5
+        },
+        {
+          "col": 100,
+          "row": 44,
+          "w_cols": 6,
+          "h_rows": 11
+        },
+        {
+          "col": 29,
+          "row": 45,
+          "w_cols": 6,
+          "h_rows": 23
+        },
+        {
+          "col": 57,
+          "row": 48,
+          "w_cols": 13,
+          "h_rows": 3
+        },
+        {
+          "col": 80,
+          "row": 48,
+          "w_cols": 20,
+          "h_rows": 7
+        },
+        {
+          "col": 72,
+          "row": 50,
+          "w_cols": 8,
+          "h_rows": 3
+        },
+        {
+          "col": 52,
+          "row": 53,
+          "w_cols": 26,
+          "h_rows": 2
+        },
+        {
+          "col": 52,
+          "row": 55,
+          "w_cols": 8,
+          "h_rows": 5
+        },
+        {
+          "col": 72,
+          "row": 55,
+          "w_cols": 6,
+          "h_rows": 14
+        },
+        {
+          "col": 37,
+          "row": 57,
+          "w_cols": 8,
+          "h_rows": 2
+        },
+        {
+          "col": 37,
+          "row": 59,
+          "w_cols": 2,
+          "h_rows": 9
+        },
+        {
+          "col": 43,
+          "row": 59,
+          "w_cols": 2,
+          "h_rows": 9
+        },
+        {
+          "col": 50,
+          "row": 60,
+          "w_cols": 1,
+          "h_rows": 8
+        },
+        {
+          "col": 54,
+          "row": 60,
+          "w_cols": 6,
+          "h_rows": 9
+        },
+        {
+          "col": 60,
+          "row": 62,
+          "w_cols": 12,
+          "h_rows": 7
+        },
+        {
+          "col": 35,
+          "row": 64,
+          "w_cols": 2,
+          "h_rows": 4
+        },
+        {
+          "col": 39,
+          "row": 64,
+          "w_cols": 4,
+          "h_rows": 4
+        },
+        {
+          "col": 45,
+          "row": 64,
+          "w_cols": 2,
+          "h_rows": 4
+        }
+      ],
+      "locked_gates": [
+        {
+          "id": "archive",
+          "rect": {
+            "col": 78,
+            "row": 50,
+            "w_cols": 2,
+            "h_rows": 3
+          },
+          "sprite_rect": {
+            "col": 78,
+            "row": 50,
+            "w_cols": 2,
+            "h_rows": 3
+          },
+          "support_rects": [
+            {
+              "col": 78,
+              "row": 34,
+              "w_cols": 2,
+              "h_rows": 16
+            },
+            {
+              "col": 78,
+              "row": 53,
+              "w_cols": 2,
+              "h_rows": 19
+            }
+          ],
+          "path": "sprites/locked_gate.png",
+          "frame_w": 512,
+          "frame_h": 768
+        }
+      ]
+    },
+    "sanctum": {
+      "world": {
+        "cols": 130,
+        "rows": 82
+      },
+      "play_area": {
+        "col": 3,
+        "row": 3,
+        "w_cols": 124,
+        "h_rows": 76
+      },
+      "objects": [
+        {
+          "type": "lamp",
+          "col": 18,
+          "row": 55,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 110,
+          "row": 58,
+          "id": "lamp"
+        },
+        {
+          "type": "altar",
+          "col": 85,
+          "row": 53,
+          "id": "sanctum_key_altar"
+        },
+        {
+          "type": "altar",
+          "col": 85,
+          "row": 30,
+          "id": "sanctum_memory_altar"
+        },
+        {
+          "type": "name_altar",
+          "col": 100,
+          "row": 41,
+          "id": "sanctum_name_altar"
+        },
+        {
+          "type": "final_door",
+          "col": 120,
+          "row": 41,
+          "id": "sanctum_final_door"
+        },
+        {
+          "type": "exit",
+          "col": 8,
+          "row": 41,
+          "id": "sanctum_to_archive",
+          "target_room": "archive",
+          "target_spawn": "from_sanctum",
+          "return_spawn_id": "from_archive",
+          "spawn_offset_cols": 5,
+          "spawn_offset_rows": 0,
+          "unlock_altar_id": null
+        }
+      ],
+      "barriers": [
+        {
+          "col": 20,
+          "row": 3,
+          "w_cols": 2,
+          "h_rows": 9
+        },
+        {
+          "col": 36,
+          "row": 3,
+          "w_cols": 2,
+          "h_rows": 21
+        },
+        {
+          "col": 52,
+          "row": 3,
+          "w_cols": 2,
+          "h_rows": 21
+        },
+        {
+          "col": 63,
+          "row": 3,
+          "w_cols": 4,
+          "h_rows": 11
+        },
+        {
+          "col": 28,
+          "row": 12,
+          "w_cols": 2,
+          "h_rows": 26
+        },
+        {
+          "col": 44,
+          "row": 12,
+          "w_cols": 2,
+          "h_rows": 26
+        },
+        {
+          "col": 20,
+          "row": 20,
+          "w_cols": 2,
+          "h_rows": 2
+        },
+        {
+          "col": 60,
+          "row": 24,
+          "w_cols": 2,
+          "h_rows": 14
+        },
+        {
+          "col": 63,
+          "row": 24,
+          "w_cols": 4,
+          "h_rows": 12
+        },
+        {
+          "col": 20,
+          "row": 30,
+          "w_cols": 2,
+          "h_rows": 2
+        },
+        {
+          "col": 20,
+          "row": 36,
+          "w_cols": 8,
+          "h_rows": 2
+        },
+        {
+          "col": 30,
+          "row": 36,
+          "w_cols": 14,
+          "h_rows": 2
+        },
+        {
+          "col": 46,
+          "row": 36,
+          "w_cols": 14,
+          "h_rows": 2
+        },
+        {
+          "col": 62,
+          "row": 36,
+          "w_cols": 1,
+          "h_rows": 2
+        },
+        {
+          "col": 20,
+          "row": 46,
+          "w_cols": 47,
+          "h_rows": 2
+        },
+        {
+          "col": 20,
+          "row": 48,
+          "w_cols": 2,
+          "h_rows": 31
+        },
+        {
+          "col": 63,
+          "row": 48,
+          "w_cols": 4,
+          "h_rows": 31
+        }
+      ],
+      "safe_paths": [],
+      "locked_gates": [
+        {
+          "id": "sanctum",
+          "rect": {
+            "col": 64,
+            "row": 36,
+            "w_cols": 2,
+            "h_rows": 10
+          },
+          "sprite_rect": {
+            "col": 63,
+            "row": 36,
+            "w_cols": 4,
+            "h_rows": 10
+          },
+          "support_rects": [],
+          "path": "sprites/locked_gate_final.png",
+          "frame_w": 512,
+          "frame_h": 1280
+        }
+      ]
+    }
+  },
+  "enemy_spawns": [
+    {
+      "id": "archive_primary",
+      "room": "archive",
+      "col": 41,
+      "row": 22,
+      "runtime_id": null
+    },
+    {
+      "id": "archive_bell_sacrifice",
+      "room": "archive",
+      "col": 112,
+      "row": 62,
+      "runtime_id": "archive_bell_sacrifice"
+    },
+    {
+      "id": "sanctum_key_sacrifice",
+      "room": "sanctum",
+      "col": 38,
+      "row": 54,
+      "runtime_id": "sanctum_key_sacrifice"
+    }
+  ]
+}

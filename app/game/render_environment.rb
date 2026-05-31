@@ -1,8 +1,5 @@
 class Game
   def render_floor args, outputs = args.outputs
-    play_area = @camera.screen_rect(current_room.play_area)
-    outputs.sprites << Render.solid(play_area, :stone, a: 85)
-    render_env_tiles(outputs, cached_env_tile_cells([:room_outline, current_room.id]) { rect_outline_cells(current_room.play_area) })
   end
 
   def render_room_barriers args, outputs = args.outputs
@@ -13,27 +10,11 @@ class Game
       end
     )
 
-    render_hall_locked_gate(outputs) if current_room.id == :hall
-    render_sanctum_locked_gate(outputs) if current_room.id == :sanctum
+    render_locked_gates(outputs)
   end
 
   def cached_env_tile_cells key
     @env_tile_cache[key] ||= env_tile_layer(yield)
-  end
-
-  def rect_outline_cells rect
-    min_col, max_col, min_row, max_row = env_cell_bounds(rect)
-    cells = []
-
-    (min_col..max_col).each do |col|
-      (min_row..max_row).each do |row|
-        next unless col == min_col || col == max_col || row == min_row || row == max_row
-
-        cells << [col, row]
-      end
-    end
-
-    cells
   end
 
   def rect_fill_cells rect
@@ -61,7 +42,6 @@ class Game
   def render_env_tiles outputs, layer, alpha: 255
     cells = layer[:cells]
     occupied = layer[:occupied]
-    tile_size = ENV_TILE_SIZE * Camera::ZOOM
 
     cells.each do |col, row|
       world_rect = {
@@ -73,8 +53,8 @@ class Game
       tile_rect = @camera.screen_rect(world_rect)
       outputs.sprites << tile_rect.merge(
         path: env_tile_path(env_tile_mask(col, row, occupied)),
-        w: tile_size,
-        h: tile_size,
+        w: tile_rect[:w],
+        h: tile_rect[:h],
         a: alpha
       )
     end
@@ -102,6 +82,15 @@ class Game
     }
   end
 
+  def env_tile_layer_without_patches cells
+    occupied = cells.each_with_object({}) { |cell, lookup| lookup[cell] = true }
+    {
+      cells: occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) },
+      occupied: occupied,
+      patches: []
+    }
+  end
+
   def env_tile_internal? col, row, occupied
     occupied[[col, row + 1]] &&
       occupied[[col + 1, row]] &&
@@ -110,8 +99,6 @@ class Game
   end
 
   def render_env_tile_patches outputs, patches, alpha: 255
-    patch_size = ENV_TILE_PATCH_SIZE * Camera::ZOOM
-
     patches.each do |patch|
       patch_rect = @camera.screen_rect(
         x: patch[:x],
@@ -121,8 +108,8 @@ class Game
       )
       outputs.sprites << patch_rect.merge(
         path: ENV_TILE_PATCH_PATH,
-        w: patch_size,
-        h: patch_size,
+        w: patch_rect[:w],
+        h: patch_rect[:h],
         a: alpha
       )
     end
@@ -171,31 +158,24 @@ class Game
     ENV_TILE_PATH_TEMPLATE % mask
   end
 
-  def render_hall_locked_gate outputs
-    render_locked_gate(
-      HALL_BELL_GATE,
-      outputs,
-      path: LOCKED_GATE_SPRITE_PATH,
-      frame_w: LOCKED_GATE_FRAME_W,
-      frame_h: LOCKED_GATE_FRAME_H
-    )
+  def render_locked_gates outputs
+    current_room.locked_gates.each do |gate|
+      render_locked_gate(
+        gate[:id],
+        gate[:sprite_rect],
+        outputs,
+        path: gate[:path],
+        frame_w: gate[:frame_w],
+        frame_h: gate[:frame_h]
+      )
+    end
   end
 
-  def render_sanctum_locked_gate outputs
-    render_locked_gate(
-      SANCTUM_KEY_GATE_SPRITE,
-      outputs,
-      path: FINAL_LOCKED_GATE_SPRITE_PATH,
-      frame_w: FINAL_LOCKED_GATE_FRAME_W,
-      frame_h: FINAL_LOCKED_GATE_FRAME_H
-    )
-  end
-
-  def render_locked_gate gate, outputs, path:, frame_w:, frame_h:, reverse_frames: false
-    update_key_gate_frame
+  def render_locked_gate gate_id, gate, outputs, path:, frame_w:, frame_h:, reverse_frames: false
+    frame = update_key_gate_frame(gate_id)
 
     gate_rect = @camera.screen_rect(gate)
-    sprite_frame = reverse_frames ? LOCKED_GATE_FRAME_COUNT - 1 - @key_gate_frame : @key_gate_frame
+    sprite_frame = reverse_frames ? LOCKED_GATE_FRAME_COUNT - 1 - frame : frame
     outputs.sprites << gate_rect.merge(
       path: path,
       tile_x: sprite_frame % LOCKED_GATE_FRAME_COLUMNS * frame_w,

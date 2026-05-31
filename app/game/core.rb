@@ -7,10 +7,6 @@ class Game
   WORLD_W = G[130]
   WORLD_H = G[82]
   PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
-  LEFT_EXIT_X = G[8]
-  RIGHT_EXIT_X = G[122]
-  LEFT_EXIT_SPAWN_X = G[13]
-  RIGHT_EXIT_SPAWN_X = G[117]
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
   ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
@@ -24,7 +20,12 @@ class Game
   ENDING_CARD_FADE_FRAMES = 1.seconds
   ENDING_TITLE_FRAMES = 3.5.seconds
   ENDING_TITLE_CORRUPT_AFTER_FRAMES = 1.1.seconds
-  RESET_HINTS = ["HINT 1", "HINT 2", "HINT 3"]
+  RESET_HINTS = [
+    "A name left behind changes the shape of the maze...",
+    "Every offering opens something while closing one's mind off from something else...",
+    "Forgetting is not failure. It is information...",
+    "Something ancient and nameless hunts those trapped here..."
+  ]
   RESET_FADE_OUT_FRAMES = 0.3.seconds
   RESET_HINT_FADE_FRAMES = 0.35.seconds
   RESET_HINT_HOLD_FRAMES = 2.seconds
@@ -40,6 +41,8 @@ class Game
   ARCHIVE_SAFE_PATH_TOLERANCE = S.value(18)
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
   BELL_STUN_FRAMES = 3.seconds
+  BELL_COOLDOWN_FRAMES = BELL_STUN_FRAMES
+  BELL_FAILED_PULSE_FRAMES = 0.25.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   MECHANIC_FEEDBACK_FRAMES = BELL_STUN_FRAMES
   LEARNED_WORD_MESSAGES = {
@@ -50,11 +53,10 @@ class Game
   }
   SACRIFICE_CONSEQUENCE_MESSAGES = {
     "BELL" => "The silence is deafening. Nothing can stop what hunts you.",
-    "KEY" => "The metal gates forgets what their locks were for, slamming shut.",
+    "KEY" => "Gates forget what their locks were for... Something else remembers the openings...",
     "MIRROR" => "The reflected path fades from memory.",
     "LAMP" => "The dark invades the space."
   }
-  HALL_BELL_GATE = { x: G[25], y: G[37], w: G[2], h: G[3] }
   LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate.png"
   FINAL_LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate_final.png"
   LOCKED_GATE_FRAME_COUNT = 9
@@ -64,10 +66,8 @@ class Game
   FINAL_LOCKED_GATE_FRAME_W = 512
   FINAL_LOCKED_GATE_FRAME_H = 1280
   LOCKED_GATE_FRAME_HOLD = 5
-  SANCTUM_WALL_X = G[64]
-  SANCTUM_GATE_H = G[10]
-  SANCTUM_KEY_GATE = { x: SANCTUM_WALL_X, y: G[36], w: G[2], h: SANCTUM_GATE_H }
-  SANCTUM_KEY_GATE_SPRITE = { x: SANCTUM_WALL_X - G[1], y: G[36], w: G[4], h: SANCTUM_GATE_H }
+  MONSTER_FINAL_FADE_FRAMES = 1.seconds
+  BELL_SACRIFICE_SPEED_MULTIPLIER = 1.25
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
   PLAYER_NAME_WORD = "YOUR NAME"
@@ -85,10 +85,11 @@ class Game
   DUST_PARTICLE_ALPHA_MAX = 96
 
   attr_accessor :player_name
-  attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy
+  attr_reader :player, :camera, :learned_words, :sacrificed_words, :sacrificed_object_ids, :current_room_id, :enemy, :enemies
 
   def initialize
     @player_name = PLAYER_NAME_WORD
+    @level_data = LevelData.load_or_create
     restart
   end
 
@@ -99,7 +100,8 @@ class Game
     spawn = room.spawn(:default)
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @player = Player.new(spawn[:x], spawn[:y])
-    @enemy = NamelessThing.new(:archive, archive_enemy_spawn[:x], archive_enemy_spawn[:y])
+    @enemies = initial_enemies
+    @enemy = @enemies.first
     @learned_words = []
     @learned_object_ids = []
     @learned_word_sources = {}
@@ -128,10 +130,11 @@ class Game
     @pointer_tap = nil
     @pointer_drag_vector = nil
     @env_tile_cache = {}
-    @key_gate_animation_started_at = nil
-    @key_gate_animation_direction = nil
-    @key_gate_animation_from_frame = 0
-    @key_gate_frame = 0
+    @key_gate_states = {}
+    reset_key_gate_states
+    @bell_last_used_at = nil
+    @bell_failed_pulse_until = nil
+    @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false
     @ending_phase = nil
     @ending_phase_started_at = nil
@@ -142,113 +145,181 @@ class Game
   end
 
   def build_rooms
+    rooms = {}
+    (@level_data["rooms"] || {}).each do |room_id, room_data|
+      room_key = room_id.to_sym
+      world = room_data["world"] || {}
+      world_w = tile_value(world["cols"] || WORLD_W / MAP_TILE)
+      world_h = tile_value(world["rows"] || WORLD_H / MAP_TILE)
+      play_area = grid_rect(room_data["play_area"] || LevelData.rect(3, 3, 124, 76))
+      interactables = (room_data["objects"] || []).map { |record| build_interactable(record) }.compact
+      barriers = (room_data["barriers"] || []).map { |record| grid_rect(record) }
+      safe_paths = (room_data["safe_paths"] || []).map { |record| grid_rect(record) }
+      locked_gates = (room_data["locked_gates"] || []).map { |record| locked_gate_record(record) }
+      spawns = default_player_spawns(room_key, world_w, world_h)
+      add_exit_return_spawns(spawns, room_data["objects"] || [])
+
+      rooms[room_key] = Room.new(
+        room_key,
+        world_w,
+        world_h,
+        play_area,
+        spawns,
+        interactables,
+        barriers,
+        safe_paths: safe_paths,
+        locked_gates: locked_gates
+      )
+    end
+    rooms
+  end
+
+  def tile_value value
+    value.to_i * MAP_TILE
+  end
+
+  def grid_center record
+    { x: tile_value(record["col"]), y: tile_value(record["row"]) }
+  end
+
+  def grid_rect record
     {
-      hall: build_hall_room,
-      archive: build_archive_room,
-      sanctum: build_sanctum_room
+      x: tile_value(record["col"]),
+      y: tile_value(record["row"]),
+      w: tile_value(record["w_cols"]),
+      h: tile_value(record["h_rows"])
     }
   end
 
-  def build_hall_room
-    Room.new(
-      :hall,
-      WORLD_W,
-      WORLD_H,
-      PLAY_AREA,
-      {
-        default: { x: WORLD_W / 2 - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: RIGHT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
-      },
-      [
-        Bell.new(G[14] - Bell::W / 2, G[40] - Bell::H / 2, :hall_bells),
-        Lamp.new(G[10] - Lamp::SIZE / 2, G[33] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[120] - Lamp::SIZE / 2, G[33] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[10] - Lamp::SIZE / 2, G[10] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[120] - Lamp::SIZE / 2, G[72] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[65] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
-        Altar.new(G[65] - Altar::W / 2, G[36] - Altar::H / 2, :hall_altar),
-        Exit.new(RIGHT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :hall_to_archive, :archive, :from_hall, unlock_altar_id: :hall_altar)
-      ],
-      hall_bell_alcove_walls
-    )
+  def centered_rect record, w, h
+    center = grid_center(record)
+    { x: center[:x] - w / 2, y: center[:y] - h / 2, w: w, h: h }
   end
 
-  def hall_bell_alcove_walls
-    [
-      { x: G[5], y: G[31], w: G[22], h: G[2] },
-      { x: G[5], y: G[47], w: G[22], h: G[2] },
-      { x: G[5], y: G[31], w: G[2], h: G[18] },
-      { x: G[25], y: G[31], w: G[2], h: G[6] },
-      { x: G[25], y: G[40], w: G[2], h: G[9] }
-    ]
+  def build_interactable record
+    id = symbol_or_nil(record["id"])
+    case record["type"]
+    when "bell"
+      rect = centered_rect(record, Bell::W, Bell::H)
+      Bell.new(rect[:x], rect[:y], id)
+    when "lamp"
+      rect = centered_rect(record, Lamp::SIZE, Lamp::SIZE)
+      Lamp.new(rect[:x], rect[:y], id)
+    when "altar"
+      rect = centered_rect(record, Altar::W, Altar::H)
+      Altar.new(rect[:x], rect[:y], id)
+    when "name_altar"
+      rect = centered_rect(record, Altar::W, Altar::H)
+      NameAltar.new(rect[:x], rect[:y], id || SANCTUM_FINAL_ALTAR_ID)
+    when "mirror"
+      rect = centered_rect(record, Mirror::W, Mirror::H)
+      Mirror.new(rect[:x], rect[:y], id)
+    when "archive_key"
+      rect = centered_rect(record, ArchiveKey::W, ArchiveKey::H)
+      ArchiveKey.new(rect[:x], rect[:y], id)
+    when "final_door"
+      rect = centered_rect(record, FinalDoor::W, FinalDoor::H)
+      FinalDoor.new(rect[:x], rect[:y], id)
+    when "exit"
+      rect = centered_rect(record, Exit::W, Exit::H)
+      options = {}
+      options[:unlock_altar_id] = symbol_or_nil(record["unlock_altar_id"]) if record["unlock_altar_id"]
+      Exit.new(
+        rect[:x],
+        rect[:y],
+        id,
+        symbol_or_nil(record["target_room"]),
+        symbol_or_nil(record["target_spawn"]),
+        options
+      )
+    else
+      nil
+    end
   end
 
-  def build_archive_room
-    Room.new(
-      :archive,
-      WORLD_W,
-      WORLD_H,
-      PLAY_AREA,
-      {
-        default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_hall: { x: LEFT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_sanctum: { x: RIGHT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
-      },
-      [
-        Lamp.new(G[16] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[65] - Lamp::SIZE / 2, G[24] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[36] - Lamp::SIZE / 2, G[56] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[55] - Lamp::SIZE / 2, G[42] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[69] - Lamp::SIZE / 2, G[31] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[86] - Lamp::SIZE / 2, G[45] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[57] - Lamp::SIZE / 2, G[67] - Lamp::SIZE / 2, :lamp),
-        Mirror.new(G[17] - Mirror::W / 2, G[49] - Mirror::H / 2, :archive_mirror),
-        Altar.new(G[22] - Altar::W / 2, G[36] - Altar::H / 2, :archive_altar),
-        ArchiveKey.new(G[72] - ArchiveKey::W / 2, G[70] - ArchiveKey::H / 2, :archive_key),
-        Exit.new(LEFT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_hall, :hall, :from_archive),
-        Exit.new(RIGHT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :archive_to_sanctum, :sanctum, :from_archive, unlock_altar_id: :archive_altar)
-      ]
-    )
+  def locked_gate_record record
+    {
+      id: symbol_or_nil(record["id"]),
+      rect: grid_rect(record["rect"]),
+      sprite_rect: grid_rect(record["sprite_rect"] || record["rect"]),
+      path: record["path"],
+      frame_w: record["frame_w"].to_i,
+      frame_h: record["frame_h"].to_i
+    }
   end
 
-  def build_sanctum_room
-    Room.new(
-      :sanctum,
-      WORLD_W,
-      WORLD_H,
-      PLAY_AREA,
-      {
-        default: { x: G[14] - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 },
-        from_archive: { x: LEFT_EXIT_SPAWN_X - Player::SIZE / 2, y: WORLD_H / 2 - Player::SIZE / 2 }
-      },
-      [
-        Lamp.new(G[18] - Lamp::SIZE / 2, G[55] - Lamp::SIZE / 2, :lamp),
-        Lamp.new(G[110] - Lamp::SIZE / 2, G[58] - Lamp::SIZE / 2, :lamp),
-        Altar.new(G[85] - Altar::W / 2, G[53] - Altar::H / 2, :sanctum_key_altar),
-        Altar.new(G[85] - Altar::W / 2, G[30] - Altar::H / 2, :sanctum_memory_altar),
-        NameAltar.new(G[100] - NameAltar::W / 2, G[41] - NameAltar::H / 2, SANCTUM_FINAL_ALTAR_ID),
-        FinalDoor.new(G[120] - FinalDoor::W / 2, G[41] - FinalDoor::H / 2, :sanctum_final_door),
-        Exit.new(LEFT_EXIT_X - Exit::W / 2, WORLD_H / 2 - Exit::H / 2, :sanctum_to_archive, :archive, :from_sanctum)
-      ],
-      sanctum_walls
-    )
-  end
-
-  def sanctum_walls
-    [
-      {
-        x: SANCTUM_KEY_GATE_SPRITE[:x],
-        y: PLAY_AREA[:y],
-        w: SANCTUM_KEY_GATE_SPRITE[:w],
-        h: SANCTUM_KEY_GATE[:y] - PLAY_AREA[:y]
-      },
-      {
-        x: SANCTUM_KEY_GATE_SPRITE[:x],
-        y: SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h],
-        w: SANCTUM_KEY_GATE_SPRITE[:w],
-        h: PLAY_AREA[:y] + PLAY_AREA[:h] - (SANCTUM_KEY_GATE[:y] + SANCTUM_KEY_GATE[:h])
+  def default_player_spawns room_id, world_w, world_h
+    default_x = room_id == :hall ? world_w / 2 : G[14]
+    {
+      default: {
+        x: default_x - Player::SIZE / 2,
+        y: world_h / 2 - Player::SIZE / 2
       }
-    ]
+    }
+  end
+
+  def add_exit_return_spawns spawns, object_records
+    object_records.each do |record|
+      next unless record["type"] == "exit"
+      next unless record["return_spawn_id"]
+
+      spawn_id = symbol_or_nil(record["return_spawn_id"])
+      spawn_col = record["col"].to_i + record["spawn_offset_cols"].to_i
+      spawn_row = record["row"].to_i + record["spawn_offset_rows"].to_i
+      spawns[spawn_id] = {
+        x: tile_value(spawn_col) - Player::SIZE / 2,
+        y: tile_value(spawn_row) - Player::SIZE / 2
+      }
+    end
+  end
+
+  def symbol_or_nil value
+    return nil if value.nil?
+
+    value.to_sym
+  end
+
+  def initial_enemies
+    spawn = enemy_spawn_record("archive_primary")
+    return [] unless spawn
+
+    [enemy_from_spawn_record(spawn)]
+  end
+
+  def enemy_from_spawn_record spawn
+    runtime_id = symbol_or_nil(spawn["runtime_id"])
+    NamelessThing.new(
+      symbol_or_nil(spawn["room"]),
+      tile_value(spawn["col"]) - NamelessThing::SIZE / 2,
+      tile_value(spawn["row"]) - NamelessThing::SIZE / 2,
+      runtime_id
+    )
+  end
+
+  def enemy_spawn_record id
+    (@level_data["enemy_spawns"] || []).find { |spawn| spawn["id"] == id }
+  end
+
+  def enemy_spawn id
+    spawn = enemy_spawn_record(id)
+    return { x: WORLD_W / 2 - NamelessThing::SIZE / 2, y: WORLD_H / 2 - NamelessThing::SIZE / 2 } unless spawn
+
+    {
+      x: tile_value(spawn["col"]) - NamelessThing::SIZE / 2,
+      y: tile_value(spawn["row"]) - NamelessThing::SIZE / 2
+    }
+  end
+
+  def reload_rooms_from_level_data preserve_player: true
+    previous_room_id = @current_room_id
+    player_position = @player ? { x: @player.x, y: @player.y } : nil
+    @rooms = build_rooms
+    @current_room_id = previous_room_id if @rooms[previous_room_id]
+    if preserve_player && @player && player_position
+      @player.x = player_position[:x]
+      @player.y = player_position[:y]
+    end
+    @env_tile_cache = {}
   end
 
   def current_room

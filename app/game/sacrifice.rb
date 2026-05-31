@@ -63,7 +63,12 @@ class Game
 
     @learned_words.delete(word)
     @sacrificed_words << word unless @sacrificed_words.include?(word)
-    @enemy.clear_stun! if word == "BELL"
+    if word == "BELL"
+      @enemies.each(&:clear_stun!)
+      ensure_bell_sacrifice_enemy!
+    elsif word == "KEY"
+      ensure_sanctum_enemy!
+    end
 
     @learned_word_sources.delete(word)
     all_interactables.each do |interactable|

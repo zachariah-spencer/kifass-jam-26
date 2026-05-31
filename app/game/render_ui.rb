@@ -8,8 +8,41 @@ class Game
       args.outputs.labels << Render.label(640, 664, visible_interaction_text, :ash, size_enum: 1, alignment_enum: 1)
     end
     render_mechanic_feedback(args)
+    render_bell_cooldown_indicator(args)
     render_altar(args) if @altar_open
     args.outputs.labels << Render.label(36, 40, "Press R to forget it all...", :ash, size_enum: -1)
+  end
+
+  def render_bell_cooldown_indicator args
+    progress = bell_cooldown_progress
+    pulse_active = @bell_failed_pulse_until && Kernel.tick_count < @bell_failed_pulse_until
+    return if progress <= 0 && !pulse_active
+
+    center = @camera.screen_point(@player.center)
+    cx = center[:x]
+    cy = center[:y] + 62
+    radius = pulse_active ? 24 : 20
+    segments = 18
+    active_segments = (segments * progress).ceil
+    color = Render.color(:ash)
+    alpha = pulse_active ? 245 : 190
+
+    segments.times do |index|
+      next if progress > 0 && index >= active_segments
+
+      angle_a = Math::PI * 2 * index / segments + Math::PI / 2
+      angle_b = Math::PI * 2 * (index + 0.72) / segments + Math::PI / 2
+      args.outputs.lines << {
+        x: cx + Math.cos(angle_a) * radius,
+        y: cy + Math.sin(angle_a) * radius,
+        x2: cx + Math.cos(angle_b) * radius,
+        y2: cy + Math.sin(angle_b) * radius,
+        r: color[:r],
+        g: color[:g],
+        b: color[:b],
+        a: alpha
+      }
+    end
   end
 
   def render_mechanic_feedback args

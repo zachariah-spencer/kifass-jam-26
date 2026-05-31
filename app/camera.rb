@@ -18,16 +18,16 @@ class Camera
 
   def follow target
     target_center = target.center
-    target_x = (coord(target_center, :x) - visible_w / 2).clamp(0, max_x)
-    target_y = (coord(target_center, :y) - visible_h / 2).clamp(0, max_y)
-    @x = @x.lerp(target_x, FOLLOW_SPEED).clamp(0, max_x)
-    @y = @y.lerp(target_y, FOLLOW_SPEED).clamp(0, max_y)
+    target_x = coord(target_center, :x) - visible_w / 2
+    target_y = coord(target_center, :y) - visible_h / 2
+    @x = @x.lerp(target_x, FOLLOW_SPEED)
+    @y = @y.lerp(target_y, FOLLOW_SPEED)
   end
 
   def snap_to target
     target_center = target.center
-    @x = (coord(target_center, :x) - visible_w / 2).clamp(0, max_x)
-    @y = (coord(target_center, :y) - visible_h / 2).clamp(0, max_y)
+    @x = coord(target_center, :x) - visible_w / 2
+    @y = coord(target_center, :y) - visible_h / 2
   end
 
   def screen_rect rect
@@ -59,14 +59,6 @@ class Camera
 
   def visible_h
     @viewport_h / ZOOM
-  end
-
-  def max_x
-    [@world_w - visible_w, 0].max
-  end
-
-  def max_y
-    [@world_h - visible_h, 0].max
   end
 
   def coord point, key

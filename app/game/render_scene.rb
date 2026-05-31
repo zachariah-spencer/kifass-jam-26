@@ -1,5 +1,10 @@
 class Game
   def render args
+    if level_editor_active?
+      render_level_editor(args)
+      return
+    end
+
     if ending_card_screen?
       render_ending_card_background(args)
     else
@@ -38,12 +43,12 @@ class Game
     render_archive_safe_paths(args, args.outputs[:scene])
     interactables.each { |interactable| render_interactable(args, interactable, args.outputs[:scene]) }
     nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) unless input_locked? }
-    @enemy.render(args, args.outputs[:scene], @camera) if @enemy.room_id == @current_room_id
+    current_enemies.each { |enemy| enemy.render(args, args.outputs[:scene], @camera) }
     @player.render(args, args.outputs[:scene], @camera, player_alpha)
     render_ambient_dust(args, args.outputs[:scene])
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
-    @enemy.render_light(args, args.outputs[:darkness], @camera) if @enemy.room_id == @current_room_id
+    current_enemies.each { |enemy| enemy.render_light(args, args.outputs[:darkness], @camera) }
     @player.render_light(args, args.outputs[:darkness], @camera)
 
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }

@@ -11,14 +11,14 @@ class NamelessThing
   LIGHT_FADE_FRAMES = Render::TRANSITION_FRAMES
   PATROL_SPEED = 1.45 * WorldScale::FACTOR
   CHASE_SPEED = 2.15 * WorldScale::FACTOR
-  BELL_SACRIFICED_CHASE_SPEED = 3.05 * WorldScale::FACTOR
   CHASE_RADIUS = WorldScale.value(350)
   PATROL_TARGET_DISTANCE = WorldScale.value(18)
 
   attr_accessor :x, :y, :room_id
-  attr_reader :w, :h, :state
+  attr_reader :id, :w, :h, :state
 
-  def initialize room_id, x, y
+  def initialize room_id, x, y, id = nil
+    @id = id
     @room_id = room_id
     @x = x
     @y = y
@@ -30,6 +30,7 @@ class NamelessThing
     @animation_started_at = Kernel.tick_count
     @light_fade_started_at = nil
     @light_fade_direction = nil
+    @final_fade_started_at = nil
   end
 
   def rect
@@ -40,7 +41,9 @@ class NamelessThing
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
 
-  def update args, player, room, patrol_points, bell_sacrificed = false
+  def update args, player, room, patrol_points, speed_multiplier = 1.0
+    return nil if final_fading?
+
     if stunned?
       @state = :stunned
       return nil
@@ -49,7 +52,8 @@ class NamelessThing
     set_state(close_to_player?(player) ? :chase : :patrol)
 
     target = @state == :chase ? player.center : current_patrol_point(patrol_points)
-    move_toward(target, @state == :chase ? chase_speed(bell_sacrificed) : PATROL_SPEED, room.play_area)
+    speed = @state == :chase ? CHASE_SPEED : PATROL_SPEED
+    move_toward(target, speed * speed_multiplier, room.play_area)
     advance_patrol(patrol_points) if @state == :patrol
   end
 
@@ -63,6 +67,7 @@ class NamelessThing
     @animation_started_at = Kernel.tick_count
     @light_fade_started_at = nil
     @light_fade_direction = nil
+    @final_fade_started_at = nil
   end
 
   def stun! duration_frames
@@ -77,13 +82,22 @@ class NamelessThing
     Kernel.tick_count < @stunned_until
   end
 
-  def chase_speed bell_sacrificed
-    bell_sacrificed ? BELL_SACRIFICED_CHASE_SPEED : CHASE_SPEED
+  def start_final_fade!
+    @final_fade_started_at ||= Kernel.tick_count
+    @stunned_until = 0
+    @state = :stunned
+  end
+
+  def final_fading?
+    !!@final_fade_started_at
   end
 
   def render args, outputs = args.outputs, camera = nil
+    alpha = render_alpha
+    return if alpha <= 0
+
     enemy_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << enemy_rect.merge(enemy_sprite)
+    outputs.sprites << enemy_rect.merge(enemy_sprite).merge(a: alpha)
   end
 
   def set_state next_state
@@ -138,12 +152,20 @@ class NamelessThing
   end
 
   def light_alpha
+    return render_alpha if final_fading?
     return 255 if @state == :chase && @light_fade_direction != :in
     return 0 unless @light_fade_started_at
 
     elapsed = Kernel.tick_count - @light_fade_started_at
     progress = (elapsed * 255 / LIGHT_FADE_FRAMES).clamp(0, 255)
     @light_fade_direction == :in ? progress : 255 - progress
+  end
+
+  def render_alpha
+    return 255 unless @final_fade_started_at
+
+    elapsed = Kernel.tick_count - @final_fade_started_at
+    (255 - elapsed * 255 / Game::MONSTER_FINAL_FADE_FRAMES).clamp(0, 255)
   end
 
   def close_to_player? player

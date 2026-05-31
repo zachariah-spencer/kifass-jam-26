@@ -1,5 +1,7 @@
 require_relative "game/room.rb"
+require_relative "game/level_data.rb"
 require_relative "game/core.rb"
+require_relative "game/level_editor.rb"
 require_relative "game/input.rb"
 require_relative "game/transitions.rb"
 require_relative "game/enemy_archive.rb"

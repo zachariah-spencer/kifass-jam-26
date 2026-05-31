@@ -131,7 +131,7 @@ class Game
     spawn = room.spawn(spawn_id)
     @player.x = spawn[:x]
     @player.y = spawn[:y]
-    @enemy.reset!(:archive, archive_enemy_spawn) if room_id == :archive
+    reset_archive_enemies if room_id == :archive
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @camera.snap_to(@player)
   end

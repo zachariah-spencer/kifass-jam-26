@@ -124,15 +124,23 @@ class Game
   end
 
   def sanctum_regular_altar? altar
-    SANCTUM_REGULAR_ALTAR_IDS.include?(altar.id)
+    sanctum_regular_altars.include?(altar)
   end
 
   def sanctum_regular_altar_spent_count
-    SANCTUM_REGULAR_ALTAR_IDS.count { |altar_id| sacrificed_object?(altar_id) }
+    sanctum_regular_altars.count(&:sacrificed?)
   end
 
   def sanctum_final_altar_active?
-    sanctum_regular_altar_spent_count == SANCTUM_REGULAR_ALTAR_IDS.length
+    altars = sanctum_regular_altars
+    altars.length >= 2 && altars.all?(&:sacrificed?)
+  end
+
+  def sanctum_regular_altars
+    room = @rooms[:sanctum]
+    return [] unless room
+
+    room.interactables.find_all { |interactable| interactable.is_a?(Altar) && !interactable.is_a?(NameAltar) }
   end
 
   def sacrificed_object? object_id

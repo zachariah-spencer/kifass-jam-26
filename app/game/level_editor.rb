@@ -40,6 +40,10 @@ class LevelEditorCamera
     { x: coord(point, :x) / @zoom + @x, y: coord(point, :y) / @zoom + @y }
   end
 
+  def shake_offset
+    { x: 0, y: 0 }
+  end
+
   def visible_w
     Grid.w / @zoom
   end
@@ -330,19 +334,29 @@ class Game
   def nearest_editor_object objects, type, col, row
     candidates = objects.find_all { |record| record["type"] == type }
     return nil if candidates.empty?
+    return nearest_editor_exit(candidates, col, row) if type == "exit"
     return candidates.first if unique_editor_object_type?(type)
 
     candidates.find { |record| record["col"].to_i == col && record["row"].to_i == row }
   end
 
+  def nearest_editor_exit exits, col, row
+    canonical = canonical_editor_exit(col)
+    return exits.find { |record| record["id"] == canonical["id"] } if canonical
+
+    exits.find do |record|
+      record["col"].to_i == col && record["row"].to_i == row
+    end
+  end
+
   def unique_editor_object_type? type
-    ["bell", "name_altar", "mirror", "archive_key", "final_door", "exit"].include?(type)
+    ["bell", "name_altar", "mirror", "archive_key", "final_door"].include?(type)
   end
 
   def new_editor_object type, col, row
     id = case type
          when "lamp" then "lamp"
-         when "altar" then "#{@current_room_id}_altar"
+         when "altar" then new_editor_altar_id(row)
          when "bell" then "#{@current_room_id}_bells"
          when "name_altar" then SANCTUM_FINAL_ALTAR_ID.to_s
          when "mirror" then "#{@current_room_id}_mirror"
@@ -352,16 +366,80 @@ class Game
          end
     record = { "type" => type, "col" => col, "row" => row, "id" => id }
     if type == "exit"
-      record.merge!(
-        "target_room" => @current_room_id.to_s,
-        "target_spawn" => "default",
-        "return_spawn_id" => "from_#{@current_room_id}",
-        "spawn_offset_cols" => col < 65 ? 5 : -5,
-        "spawn_offset_rows" => 0,
-        "unlock_altar_id" => nil
-      )
+      record.merge!(canonical_editor_exit(col) || default_editor_exit(col))
     end
     record
+  end
+
+  def new_editor_altar_id row
+    return "#{@current_room_id}_altar" unless @current_room_id == :sanctum
+
+    ids = SANCTUM_REGULAR_ALTAR_IDS.map(&:to_s)
+    existing_ids = (editor_room_data["objects"] || []).map { |record| record["id"] }
+    preferred_id = row >= 41 ? SANCTUM_REGULAR_ALTAR_IDS.first.to_s : SANCTUM_REGULAR_ALTAR_IDS.last.to_s
+    return preferred_id unless existing_ids.include?(preferred_id)
+
+    ids.find { |id| !existing_ids.include?(id) } || preferred_id
+  end
+
+  def canonical_editor_exit col
+    case @current_room_id
+    when :hall
+      {
+        "id" => "hall_to_archive",
+        "target_room" => "archive",
+        "target_spawn" => "from_hall",
+        "return_spawn_id" => "from_archive",
+        "spawn_offset_cols" => -5,
+        "spawn_offset_rows" => 0,
+        "unlock_altar_id" => "hall_altar"
+      }
+    when :archive
+      if col < 65
+        {
+          "id" => "archive_to_hall",
+          "target_room" => "hall",
+          "target_spawn" => "from_archive",
+          "return_spawn_id" => "from_hall",
+          "spawn_offset_cols" => 5,
+          "spawn_offset_rows" => 0,
+          "unlock_altar_id" => nil
+        }
+      else
+        {
+          "id" => "archive_to_sanctum",
+          "target_room" => "sanctum",
+          "target_spawn" => "from_archive",
+          "return_spawn_id" => "from_sanctum",
+          "spawn_offset_cols" => -5,
+          "spawn_offset_rows" => 0,
+          "unlock_altar_id" => "archive_altar"
+        }
+      end
+    when :sanctum
+      {
+        "id" => "sanctum_to_archive",
+        "target_room" => "archive",
+        "target_spawn" => "from_sanctum",
+        "return_spawn_id" => "from_archive",
+        "spawn_offset_cols" => 5,
+        "spawn_offset_rows" => 0,
+        "unlock_altar_id" => nil
+      }
+    else
+      nil
+    end
+  end
+
+  def default_editor_exit col
+    {
+      "target_room" => @current_room_id.to_s,
+      "target_spawn" => "default",
+      "return_spawn_id" => "from_#{@current_room_id}",
+      "spawn_offset_cols" => col < 65 ? 5 : -5,
+      "spawn_offset_rows" => 0,
+      "unlock_altar_id" => nil
+    }
   end
 
   def place_editor_enemy col, row

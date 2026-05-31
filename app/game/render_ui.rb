@@ -17,14 +17,6 @@ class Game
   def render_archive_off_path_warning args
     return unless archive_off_path_warning_active?
 
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 24)
-    alpha = ((pulse + 1) * 25).to_i
-    color = Render.color(:ash)
-    edge = 40
-    args.outputs.primitives << { x: edge, y: Grid.h - edge, w: Grid.w - (edge * 2), h: edge, path: :solid, **color, a: alpha }
-    args.outputs.primitives << { x: edge, y: 0, w: Grid.w - (edge * 2), h: edge, path: :solid, **color, a: alpha }
-    args.outputs.primitives << { x: 0, y: 0, w: edge, h: Grid.h, path: :solid, **color, a: alpha }
-    args.outputs.primitives << { x: Grid.w - edge, y: 0, w: edge, h: Grid.h, path: :solid, **color, a: alpha }
     args.outputs.labels << Render.label(640, 142, ARCHIVE_OFF_PATH_WARNING_TEXT, :ember, size_enum: 1, alignment_enum: 1, a: 230)
   end
 
@@ -36,11 +28,12 @@ class Game
     center = @camera.screen_point(@player.center)
     cx = center[:x]
     cy = center[:y] + 62
-    radius = pulse_active ? 24 : 20
+    pulse_scale = bell_failed_pulse_scale
+    radius = 20.lerp(24, pulse_scale)
     segments = 18
     active_segments = (segments * progress).ceil
     color = Render.color(:ash)
-    alpha = pulse_active ? 245 : 190
+    alpha = 190.lerp(245, pulse_scale).to_i
 
     segments.times do |index|
       next if progress > 0 && index >= active_segments
@@ -57,6 +50,23 @@ class Game
         b: color[:b],
         a: alpha
       }
+    end
+  end
+
+  def bell_failed_pulse_scale
+    return 0 unless @bell_failed_pulse_until
+
+    remaining = @bell_failed_pulse_until - Kernel.tick_count
+    return 0 if remaining <= 0
+
+    elapsed = BELL_FAILED_PULSE_FRAMES - remaining
+    progress = (elapsed.to_f / BELL_FAILED_PULSE_FRAMES).clamp(0, 1)
+    midpoint = 0.5
+
+    if progress < midpoint
+      0.lerp(1, progress / midpoint)
+    else
+      1.lerp(0, (progress - midpoint) / midpoint)
     end
   end
 

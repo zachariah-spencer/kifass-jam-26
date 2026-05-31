@@ -72,6 +72,9 @@ class NameEntryScene < BaseScene
   THANKS_FADE_FRAMES = 0.9.seconds
   THANKS_COMPLETE_DELAY_FRAMES = 2.seconds
   MEMORY_HINT_DELAY_FRAMES = 1.seconds
+  SKIP_CONFIRMATION_TEXT = "Tap again to skip intro..."
+  SKIP_CONFIRMATION_FADE_FRAMES = 0.2.seconds
+  SKIP_CONFIRMATION_HOLD_FRAMES = 1.seconds
   THANKS_LINES = [
     "Thank you, %{name}...",
     "Our identities and our memories of them are what shape us, after all..."
@@ -110,6 +113,8 @@ class NameEntryScene < BaseScene
     @submitted_name = nil
     @pressed_key_until = {}
     @held_key_value = nil
+    @skip_confirmation_started_at = nil
+    @skip_touch_ids = {}
   end
 
   def tick
@@ -118,6 +123,8 @@ class NameEntryScene < BaseScene
   end
 
   def update
+    handle_intro_skip_input if accepts_input? && intro_skip_phase?
+
     case @phase
     when :prompt_delay
       set_phase(:prompt) if phase_elapsed >= PROMPT_DELAY_FRAMES
@@ -137,6 +144,16 @@ class NameEntryScene < BaseScene
       set_phase(:thanks_fade_out) if memory_hint_ready_to_fade_out?
     when :thanks_fade_out
       args.state.next_scene = :play if phase_elapsed >= THANKS_FADE_FRAMES
+    end
+  end
+
+  def handle_intro_skip_input
+    return unless skip_pointer_pressed?
+
+    if skip_confirmation_visible?
+      args.state.next_scene = :play
+    else
+      @skip_confirmation_started_at = Kernel.tick_count
     end
   end
 
@@ -223,6 +240,7 @@ class NameEntryScene < BaseScene
     args.outputs.sprites << Render.fullscreen(:stone)
     render_prompt_and_keyboard
     render_thanks
+    render_skip_confirmation
   end
 
   def render_prompt_and_keyboard
@@ -301,6 +319,13 @@ class NameEntryScene < BaseScene
       args.outputs.labels << Render.label(640, 408, lines[0], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
       args.outputs.labels << Render.label(640, 348, lines[1], :ash, size_enum: 1, alignment_enum: 1, a: alpha)
     end
+  end
+
+  def render_skip_confirmation
+    alpha = skip_confirmation_alpha
+    return if alpha <= 0
+
+    args.outputs.labels << Render.label(36, 56, SKIP_CONFIRMATION_TEXT, :ash, size_enum: -1, a: alpha)
   end
 
   def prompt_alpha
@@ -386,6 +411,54 @@ class NameEntryScene < BaseScene
 
   def memory_hint_visible?
     [:memory_hint_hold, :thanks_fade_out].include?(@phase)
+  end
+
+  def intro_skip_phase?
+    [
+      :ui_fade_out,
+      :thanks_fade_in,
+      :thanks_hold,
+      :memory_hint_delay,
+      :memory_hint_hold,
+      :thanks_fade_out
+    ].include?(@phase)
+  end
+
+  def skip_confirmation_visible?
+    skip_confirmation_alpha > 0
+  end
+
+  def skip_confirmation_alpha
+    return 0 unless @skip_confirmation_started_at
+
+    elapsed = Kernel.tick_count - @skip_confirmation_started_at
+    fade_out_starts_at = SKIP_CONFIRMATION_FADE_FRAMES + SKIP_CONFIRMATION_HOLD_FRAMES
+    complete_at = fade_out_starts_at + SKIP_CONFIRMATION_FADE_FRAMES
+
+    if elapsed < SKIP_CONFIRMATION_FADE_FRAMES
+      (elapsed * 255 / SKIP_CONFIRMATION_FADE_FRAMES).clamp(0, 255)
+    elsif elapsed < fade_out_starts_at
+      255
+    elsif elapsed < complete_at
+      (255 - (elapsed - fade_out_starts_at) * 255 / SKIP_CONFIRMATION_FADE_FRAMES).clamp(0, 255)
+    else
+      @skip_confirmation_started_at = nil
+      0
+    end
+  end
+
+  def skip_pointer_pressed?
+    !!args.inputs.mouse.click || touch_released?
+  end
+
+  def touch_released?
+    touches = args.inputs.touch || {}
+    current_touch_ids = {}
+    touches.each_key { |touch_id| current_touch_ids[touch_id] = true }
+
+    released = @skip_touch_ids.keys.any? { |touch_id| !current_touch_ids[touch_id] }
+    @skip_touch_ids = current_touch_ids
+    released
   end
 
   def thanks_lines

@@ -31,7 +31,7 @@ class Game
   RESET_HINT_HOLD_FRAMES = 2.seconds
   RESET_FADE_IN_FRAMES = 0.35.seconds
   ARCHIVE_PATH_RESET_FADE_FRAMES = 0.2.seconds
-  ARCHIVE_OFF_PATH_WARNING_FRAMES = 0.75.seconds
+  ARCHIVE_OFF_PATH_WARNING_FRAMES = 0.5.seconds
   ARCHIVE_OFF_PATH_WARNING_TEXT = "You begin slipping into the void..."
   ALTAR_PANEL = { x: 430, y: 190, w: 420, h: 330 }
   ALTAR_WORD_ROW_H = 42
@@ -44,7 +44,7 @@ class Game
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
   BELL_STUN_FRAMES = 3.seconds
   BELL_COOLDOWN_FRAMES = BELL_STUN_FRAMES
-  BELL_FAILED_PULSE_FRAMES = 0.25.seconds
+  BELL_FAILED_PULSE_FRAMES = 0.1.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   MECHANIC_FEEDBACK_FRAMES = BELL_STUN_FRAMES
   LEARNED_WORD_MESSAGES = {

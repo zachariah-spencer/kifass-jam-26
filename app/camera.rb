@@ -53,6 +53,10 @@ class Camera
     { x: coord(point, :x) / ZOOM + @x, y: coord(point, :y) / ZOOM + @y }
   end
 
+  def zoom
+    ZOOM
+  end
+
   def visible_w
     @viewport_w / ZOOM
   end

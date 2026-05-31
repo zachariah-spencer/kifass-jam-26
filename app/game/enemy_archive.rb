@@ -1,4 +1,9 @@
 class Game
+  ENEMY_RANDOM_SPAWN_ATTEMPTS = 80
+  ENEMY_PLAYER_SPAWN_BUFFER = S.value(384)
+  SANCTUM_LEFT_MAZE_SPAWN_AREA = { x: G[22], y: G[4], w: G[40], h: G[74] }
+  SANCTUM_ENEMY_SPEED_MULTIPLIER = 0.75
+
   def update_enemy args
     return false if ending_sequence_triggered?
 
@@ -8,13 +13,15 @@ class Game
         @player,
         current_room,
         enemy_patrol_points(current_room),
-        monster_speed_multiplier
+        enemy_speed_multiplier(enemy)
       )
 
       next unless rects_intersect?(enemy.rect, @player.rect)
 
       if @current_room_id == :archive
         request_archive_caught_reset
+      elsif @current_room_id == :sanctum
+        request_sanctum_caught_reset
       else
         request_give_up_reset
       end
@@ -26,6 +33,12 @@ class Game
 
   def current_enemies
     @enemies.find_all { |enemy| enemy.room_id == @current_room_id }
+  end
+
+  def enemy_speed_multiplier enemy
+    multiplier = monster_speed_multiplier
+    multiplier *= SANCTUM_ENEMY_SPEED_MULTIPLIER if enemy.room_id == :sanctum
+    multiplier
   end
 
   def exits
@@ -185,22 +198,22 @@ class Game
     ]
   end
 
-  def archive_enemy_spawn
-    enemy_spawn("archive_primary")
+  def archive_enemy_spawn extra_blockers = []
+    randomized_enemy_spawn("archive_primary", extra_blockers)
   end
 
-  def archive_second_enemy_spawn
-    enemy_spawn("archive_bell_sacrifice")
+  def archive_second_enemy_spawn extra_blockers = []
+    randomized_enemy_spawn("archive_bell_sacrifice", extra_blockers)
   end
 
-  def sanctum_enemy_spawn
-    enemy_spawn("sanctum_key_sacrifice")
+  def sanctum_enemy_spawn extra_blockers = []
+    randomized_enemy_spawn("sanctum_key_sacrifice", extra_blockers)
   end
 
   def ensure_bell_sacrifice_enemy!
     return if @enemies.any? { |enemy| enemy.room_id == :archive && enemy.id == :archive_bell_sacrifice }
 
-    spawn = archive_second_enemy_spawn
+    spawn = archive_second_enemy_spawn(enemy_rects_for_room(:archive))
     @enemies << NamelessThing.new(:archive, spawn[:x], spawn[:y], :archive_bell_sacrifice)
   end
 
@@ -208,7 +221,7 @@ class Game
     return unless word_sacrificed?("KEY")
     return if @enemies.any? { |enemy| enemy.room_id == :sanctum }
 
-    spawn = sanctum_enemy_spawn
+    spawn = sanctum_enemy_spawn(enemy_rects_for_room(:sanctum))
     @enemies << NamelessThing.new(:sanctum, spawn[:x], spawn[:y], :sanctum_key_sacrifice)
   end
 
@@ -223,6 +236,100 @@ class Game
   def archive_safe_paths
     room = @rooms[:archive]
     room ? room.safe_paths : []
+  end
+
+  def randomized_enemy_spawn id, extra_blockers = []
+    case id
+    when "archive_primary", "archive_bell_sacrifice"
+      random_archive_enemy_spawn(extra_blockers) || enemy_spawn(id)
+    when "sanctum_key_sacrifice"
+      random_sanctum_enemy_spawn(extra_blockers) || enemy_spawn(id)
+    else
+      enemy_spawn(id)
+    end
+  end
+
+  def random_archive_enemy_spawn extra_blockers = []
+    room = @rooms[:archive]
+    paths = archive_safe_paths.find_all { |path| rect_can_fit_enemy?(path) }
+    return nil unless room && !paths.empty?
+
+    ENEMY_RANDOM_SPAWN_ATTEMPTS.times do
+      rect = random_enemy_rect_in(paths[rand(paths.length)])
+      return rect_position(rect) if valid_enemy_spawn_rect?(room, rect, archive_enemy_spawn_blockers(room) + extra_blockers)
+    end
+
+    nil
+  end
+
+  def random_sanctum_enemy_spawn extra_blockers = []
+    room = @rooms[:sanctum]
+    return nil unless room && rect_can_fit_enemy?(SANCTUM_LEFT_MAZE_SPAWN_AREA)
+
+    ENEMY_RANDOM_SPAWN_ATTEMPTS.times do
+      rect = random_enemy_rect_in(SANCTUM_LEFT_MAZE_SPAWN_AREA)
+      return rect_position(rect) if valid_enemy_spawn_rect?(room, rect, sanctum_enemy_spawn_blockers(room) + extra_blockers)
+    end
+
+    nil
+  end
+
+  def rect_can_fit_enemy? rect
+    rect[:w] >= NamelessThing::SIZE && rect[:h] >= NamelessThing::SIZE
+  end
+
+  def random_enemy_rect_in rect
+    max_x = rect[:w] - NamelessThing::SIZE
+    max_y = rect[:h] - NamelessThing::SIZE
+    {
+      x: rect[:x] + rand(max_x + 1),
+      y: rect[:y] + rand(max_y + 1),
+      w: NamelessThing::SIZE,
+      h: NamelessThing::SIZE
+    }
+  end
+
+  def rect_position rect
+    { x: rect[:x], y: rect[:y] }
+  end
+
+  def valid_enemy_spawn_rect? room, rect, blockers
+    return false unless rect_inside_rect?(rect, room.play_area)
+    return false if blockers.any? { |blocker| rects_intersect?(rect, blocker) }
+    return false if @player && distance_between(rect_center(rect), @player.center) < ENEMY_PLAYER_SPAWN_BUFFER
+
+    true
+  end
+
+  def archive_enemy_spawn_blockers room
+    room_collision_barriers(room)
+  end
+
+  def sanctum_enemy_spawn_blockers room
+    room_collision_barriers(room) + room.interactables.map(&:rect)
+  end
+
+  def room_collision_barriers room
+    barriers = room.barriers.dup
+    room.locked_gates.each do |gate|
+      barriers << gate[:rect] if key_gate_closed?(gate[:id])
+    end
+    barriers
+  end
+
+  def rect_inside_rect? inner, outer
+    inner[:x] >= outer[:x] &&
+      inner[:x] + inner[:w] <= outer[:x] + outer[:w] &&
+      inner[:y] >= outer[:y] &&
+      inner[:y] + inner[:h] <= outer[:y] + outer[:h]
+  end
+
+  def rect_center rect
+    { x: rect[:x] + rect[:w] / 2, y: rect[:y] + rect[:h] / 2 }
+  end
+
+  def enemy_rects_for_room room_id
+    @enemies.find_all { |enemy| enemy.room_id == room_id }.map(&:rect)
   end
 
   def expanded_archive_safe_path path
@@ -260,6 +367,17 @@ class Game
     @camera.snap_to(@player)
   end
 
+  def reset_player_to_sanctum_exit
+    spawn = current_room.spawn(:from_archive)
+    @player.x = spawn[:x]
+    @player.y = spawn[:y]
+    @player.stop!
+    close_altar
+    clear_interaction_text
+    reset_sanctum_enemies
+    @camera.snap_to(@player)
+  end
+
   def clear_archive_off_path_warning
     @archive_off_path_started_at = nil
   end
@@ -275,11 +393,23 @@ class Game
   end
 
   def reset_archive_enemies
+    occupied_rects = []
     @enemies.each do |enemy|
       next unless enemy.room_id == :archive
 
-      spawn = enemy.id == :archive_bell_sacrifice ? archive_second_enemy_spawn : archive_enemy_spawn
+      spawn = enemy.id == :archive_bell_sacrifice ? archive_second_enemy_spawn(occupied_rects) : archive_enemy_spawn(occupied_rects)
       enemy.reset!(:archive, spawn)
+      occupied_rects << enemy.rect
+    end
+  end
+
+  def reset_sanctum_enemies
+    occupied_rects = []
+    @enemies.each do |enemy|
+      next unless enemy.room_id == :sanctum
+
+      enemy.reset!(:sanctum, sanctum_enemy_spawn(occupied_rects))
+      occupied_rects << enemy.rect
     end
   end
 

@@ -15,12 +15,6 @@
       },
       "objects": [
         {
-          "type": "bell",
-          "col": 14,
-          "row": 40,
-          "id": "hall_bells"
-        },
-        {
           "type": "lamp",
           "col": 18,
           "row": 36,
@@ -33,38 +27,86 @@
           "id": "lamp"
         },
         {
-          "type": "lamp",
-          "col": 120,
-          "row": 33,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 10,
-          "row": 10,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 120,
-          "row": 72,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 65,
-          "row": 55,
-          "id": "lamp"
-        },
-        {
           "type": "altar",
-          "col": 65,
-          "row": 36,
+          "col": 76,
+          "row": 41,
           "id": "hall_altar"
         },
         {
+          "type": "bell",
+          "col": 95,
+          "row": 24,
+          "id": "hall_bells"
+        },
+        {
+          "type": "lamp",
+          "col": 56,
+          "row": 32,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 56,
+          "row": 38,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 80,
+          "row": 32,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 80,
+          "row": 38,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 100,
+          "row": 26,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 90,
+          "row": 26,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 90,
+          "row": 21,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 100,
+          "row": 21,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 95,
+          "row": 21,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 104,
+          "row": 32,
+          "id": "lamp"
+        },
+        {
+          "type": "lamp",
+          "col": 104,
+          "row": 38,
+          "id": "lamp"
+        },
+        {
           "type": "exit",
-          "col": 87,
+          "col": 126,
           "row": 35,
           "id": "hall_to_archive",
           "target_room": "archive",
@@ -76,6 +118,72 @@
         }
       ],
       "barriers": [
+        {
+          "col": 88,
+          "row": 19,
+          "w_cols": 14,
+          "h_rows": 1
+        },
+        {
+          "col": 88,
+          "row": 20,
+          "w_cols": 1,
+          "h_rows": 8
+        },
+        {
+          "col": 101,
+          "row": 20,
+          "w_cols": 1,
+          "h_rows": 8
+        },
+        {
+          "col": 89,
+          "row": 27,
+          "w_cols": 4,
+          "h_rows": 1
+        },
+        {
+          "col": 97,
+          "row": 27,
+          "w_cols": 4,
+          "h_rows": 1
+        },
+        {
+          "col": 92,
+          "row": 28,
+          "w_cols": 1,
+          "h_rows": 3
+        },
+        {
+          "col": 97,
+          "row": 28,
+          "w_cols": 1,
+          "h_rows": 3
+        },
+        {
+          "col": 54,
+          "row": 30,
+          "w_cols": 38,
+          "h_rows": 1
+        },
+        {
+          "col": 98,
+          "row": 30,
+          "w_cols": 32,
+          "h_rows": 1
+        },
+        {
+          "col": 54,
+          "row": 31,
+          "w_cols": 1,
+          "h_rows": 9
+        },
+        {
+          "col": 129,
+          "row": 31,
+          "w_cols": 1,
+          "h_rows": 9
+        },
         {
           "col": 5,
           "row": 32,
@@ -89,16 +197,70 @@
           "h_rows": 5
         },
         {
+          "col": 55,
+          "row": 39,
+          "w_cols": 8,
+          "h_rows": 1
+        },
+        {
+          "col": 67,
+          "row": 39,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
+          "col": 79,
+          "row": 39,
+          "w_cols": 50,
+          "h_rows": 1
+        },
+        {
+          "col": 62,
+          "row": 40,
+          "w_cols": 1,
+          "h_rows": 9
+        },
+        {
+          "col": 67,
+          "row": 40,
+          "w_cols": 1,
+          "h_rows": 9
+        },
+        {
+          "col": 72,
+          "row": 40,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 79,
+          "row": 40,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
           "col": 25,
           "row": 43,
           "w_cols": 2,
           "h_rows": 5
         },
         {
+          "col": 73,
+          "row": 43,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
           "col": 7,
           "row": 46,
           "w_cols": 18,
           "h_rows": 2
+        },
+        {
+          "col": 63,
+          "row": 48,
+          "w_cols": 4,
+          "h_rows": 1
         }
       ],
       "safe_paths": [],
@@ -117,64 +279,10 @@
       },
       "objects": [
         {
-          "type": "lamp",
-          "col": 16,
-          "row": 55,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 65,
-          "row": 24,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 36,
-          "row": 56,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 55,
-          "row": 42,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 69,
-          "row": 31,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 86,
-          "row": 45,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 57,
-          "row": 67,
-          "id": "lamp"
-        },
-        {
           "type": "mirror",
           "col": 17,
           "row": 49,
           "id": "archive_mirror"
-        },
-        {
-          "type": "altar",
-          "col": 22,
-          "row": 36,
-          "id": "archive_altar"
-        },
-        {
-          "type": "archive_key",
-          "col": 72,
-          "row": 70,
-          "id": "archive_key"
         },
         {
           "type": "exit",
@@ -199,6 +307,18 @@
           "spawn_offset_cols": -5,
           "spawn_offset_rows": 0,
           "unlock_altar_id": "archive_altar"
+        },
+        {
+          "type": "altar",
+          "col": 24,
+          "row": 64,
+          "id": "archive_altar"
+        },
+        {
+          "type": "archive_key",
+          "col": 65,
+          "row": 61,
+          "id": "archive_key"
         }
       ],
       "barriers": [
@@ -261,32 +381,32 @@
         {
           "col": 36,
           "row": 17,
-          "w_cols": 22,
+          "w_cols": 21,
           "h_rows": 4
         },
         {
-          "col": 60,
+          "col": 63,
           "row": 17,
-          "w_cols": 20,
+          "w_cols": 17,
           "h_rows": 7
         },
         {
           "col": 36,
           "row": 21,
-          "w_cols": 4,
+          "w_cols": 3,
           "h_rows": 14
         },
         {
           "col": 54,
           "row": 21,
-          "w_cols": 4,
+          "w_cols": 3,
           "h_rows": 19
         },
         {
           "col": 88,
           "row": 21,
           "w_cols": 6,
-          "h_rows": 11
+          "h_rows": 15
         },
         {
           "col": 112,
@@ -295,46 +415,52 @@
           "h_rows": 23
         },
         {
-          "col": 40,
+          "col": 63,
           "row": 24,
-          "w_cols": 6,
-          "h_rows": 2
-        },
-        {
-          "col": 60,
-          "row": 24,
-          "w_cols": 6,
+          "w_cols": 3,
           "h_rows": 16
         },
         {
           "col": 74,
           "row": 24,
           "w_cols": 6,
-          "h_rows": 8
+          "h_rows": 5
         },
         {
           "col": 80,
           "row": 25,
           "w_cols": 8,
-          "h_rows": 7
+          "h_rows": 4
         },
         {
-          "col": 44,
+          "col": 39,
           "row": 26,
-          "w_cols": 8,
-          "h_rows": 2
+          "w_cols": 12,
+          "h_rows": 1
+        },
+        {
+          "col": 39,
+          "row": 27,
+          "w_cols": 1,
+          "h_rows": 8
         },
         {
           "col": 44,
-          "row": 28,
-          "w_cols": 2,
-          "h_rows": 7
+          "row": 27,
+          "w_cols": 1,
+          "h_rows": 8
         },
         {
           "col": 50,
-          "row": 28,
+          "row": 27,
+          "w_cols": 1,
+          "h_rows": 41
+        },
+        {
+          "col": 86,
+          "row": 29,
           "w_cols": 2,
-          "h_rows": 32
+          "h_rows": 7
         },
         {
           "col": 40,
@@ -343,28 +469,28 @@
           "h_rows": 4
         },
         {
-          "col": 46,
+          "col": 45,
           "row": 31,
-          "w_cols": 4,
+          "w_cols": 5,
           "h_rows": 4
         },
         {
           "col": 5,
-          "row": 33,
-          "w_cols": 19,
-          "h_rows": 17
+          "row": 34,
+          "w_cols": 18,
+          "h_rows": 16
         },
         {
-          "col": 58,
+          "col": 57,
           "row": 34,
-          "w_cols": 2,
+          "w_cols": 6,
           "h_rows": 6
         },
         {
           "col": 47,
           "row": 35,
           "w_cols": 3,
-          "h_rows": 33
+          "h_rows": 11
         },
         {
           "col": 100,
@@ -379,12 +505,6 @@
           "h_rows": 8
         },
         {
-          "col": 24,
-          "row": 38,
-          "w_cols": 11,
-          "h_rows": 7
-        },
-        {
           "col": 66,
           "row": 38,
           "w_cols": 8,
@@ -394,19 +514,31 @@
           "col": 72,
           "row": 40,
           "w_cols": 2,
-          "h_rows": 8
+          "h_rows": 6
+        },
+        {
+          "col": 23,
+          "row": 43,
+          "w_cols": 11,
+          "h_rows": 3
+        },
+        {
+          "col": 51,
+          "row": 43,
+          "w_cols": 1,
+          "h_rows": 17
+        },
+        {
+          "col": 70,
+          "row": 43,
+          "w_cols": 2,
+          "h_rows": 5
         },
         {
           "col": 57,
-          "row": 43,
-          "w_cols": 15,
-          "h_rows": 5
-        },
-        {
-          "col": 74,
-          "row": 43,
-          "w_cols": 4,
-          "h_rows": 5
+          "row": 44,
+          "w_cols": 13,
+          "h_rows": 4
         },
         {
           "col": 100,
@@ -416,15 +548,27 @@
         },
         {
           "col": 29,
-          "row": 45,
-          "w_cols": 6,
-          "h_rows": 23
+          "row": 46,
+          "w_cols": 5,
+          "h_rows": 22
+        },
+        {
+          "col": 48,
+          "row": 46,
+          "w_cols": 2,
+          "h_rows": 22
+        },
+        {
+          "col": 72,
+          "row": 46,
+          "w_cols": 1,
+          "h_rows": 1
         },
         {
           "col": 57,
           "row": 48,
-          "w_cols": 13,
-          "h_rows": 3
+          "w_cols": 12,
+          "h_rows": 2
         },
         {
           "col": 80,
@@ -433,9 +577,9 @@
           "h_rows": 7
         },
         {
-          "col": 72,
+          "col": 75,
           "row": 50,
-          "w_cols": 8,
+          "w_cols": 5,
           "h_rows": 3
         },
         {
@@ -457,34 +601,40 @@
           "h_rows": 14
         },
         {
-          "col": 37,
-          "row": 57,
-          "w_cols": 8,
-          "h_rows": 2
+          "col": 38,
+          "row": 58,
+          "w_cols": 6,
+          "h_rows": 1
         },
         {
-          "col": 37,
+          "col": 38,
           "row": 59,
-          "w_cols": 2,
+          "w_cols": 1,
           "h_rows": 9
         },
         {
           "col": 43,
           "row": 59,
-          "w_cols": 2,
+          "w_cols": 1,
           "h_rows": 9
         },
         {
-          "col": 50,
-          "row": 60,
-          "w_cols": 1,
-          "h_rows": 8
-        },
-        {
-          "col": 54,
+          "col": 21,
           "row": 60,
           "w_cols": 6,
+          "h_rows": 7
+        },
+        {
+          "col": 55,
+          "row": 60,
+          "w_cols": 5,
           "h_rows": 9
+        },
+        {
+          "col": 27,
+          "row": 61,
+          "w_cols": 2,
+          "h_rows": 5
         },
         {
           "col": 60,
@@ -493,9 +643,9 @@
           "h_rows": 7
         },
         {
-          "col": 35,
+          "col": 34,
           "row": 64,
-          "w_cols": 2,
+          "w_cols": 4,
           "h_rows": 4
         },
         {
@@ -505,9 +655,9 @@
           "h_rows": 4
         },
         {
-          "col": 45,
+          "col": 44,
           "row": 64,
-          "w_cols": 2,
+          "w_cols": 4,
           "h_rows": 4
         }
       ],
@@ -559,42 +709,6 @@
       },
       "objects": [
         {
-          "type": "lamp",
-          "col": 18,
-          "row": 55,
-          "id": "lamp"
-        },
-        {
-          "type": "lamp",
-          "col": 110,
-          "row": 58,
-          "id": "lamp"
-        },
-        {
-          "type": "altar",
-          "col": 85,
-          "row": 53,
-          "id": "sanctum_key_altar"
-        },
-        {
-          "type": "altar",
-          "col": 85,
-          "row": 30,
-          "id": "sanctum_memory_altar"
-        },
-        {
-          "type": "name_altar",
-          "col": 100,
-          "row": 41,
-          "id": "sanctum_name_altar"
-        },
-        {
-          "type": "final_door",
-          "col": 120,
-          "row": 41,
-          "id": "sanctum_final_door"
-        },
-        {
           "type": "exit",
           "col": 8,
           "row": 41,
@@ -605,110 +719,548 @@
           "spawn_offset_cols": 5,
           "spawn_offset_rows": 0,
           "unlock_altar_id": null
+        },
+        {
+          "type": "altar",
+          "col": 75,
+          "row": 36,
+          "id": "sanctum_memory_altar"
+        },
+        {
+          "type": "altar",
+          "col": 75,
+          "row": 47,
+          "id": "sanctum_key_altar"
+        },
+        {
+          "type": "name_altar",
+          "col": 81,
+          "row": 42,
+          "id": "sanctum_name_altar"
+        },
+        {
+          "type": "final_door",
+          "col": 89,
+          "row": 42,
+          "id": "sanctum_final_door"
         }
       ],
       "barriers": [
         {
-          "col": 20,
-          "row": 3,
-          "w_cols": 2,
-          "h_rows": 9
+          "col": 4,
+          "row": 9,
+          "w_cols": 61,
+          "h_rows": 1
         },
         {
-          "col": 36,
-          "row": 3,
-          "w_cols": 2,
-          "h_rows": 21
+          "col": 4,
+          "row": 10,
+          "w_cols": 1,
+          "h_rows": 64
         },
         {
-          "col": 52,
-          "row": 3,
-          "w_cols": 2,
-          "h_rows": 21
-        },
-        {
-          "col": 63,
-          "row": 3,
-          "w_cols": 4,
-          "h_rows": 11
-        },
-        {
-          "col": 28,
-          "row": 12,
-          "w_cols": 2,
+          "col": 14,
+          "row": 10,
+          "w_cols": 1,
           "h_rows": 26
         },
         {
-          "col": 44,
-          "row": 12,
-          "w_cols": 2,
-          "h_rows": 26
-        },
-        {
-          "col": 20,
-          "row": 20,
-          "w_cols": 2,
-          "h_rows": 2
-        },
-        {
-          "col": 60,
-          "row": 24,
-          "w_cols": 2,
-          "h_rows": 14
-        },
-        {
-          "col": 63,
-          "row": 24,
-          "w_cols": 4,
+          "col": 35,
+          "row": 10,
+          "w_cols": 1,
           "h_rows": 12
         },
         {
-          "col": 20,
-          "row": 30,
+          "col": 63,
+          "row": 10,
           "w_cols": 2,
-          "h_rows": 2
+          "h_rows": 22
         },
         {
           "col": 20,
-          "row": 36,
-          "w_cols": 8,
-          "h_rows": 2
+          "row": 13,
+          "w_cols": 12,
+          "h_rows": 1
         },
         {
-          "col": 30,
-          "row": 36,
-          "w_cols": 14,
-          "h_rows": 2
+          "col": 57,
+          "row": 13,
+          "w_cols": 1,
+          "h_rows": 15
+        },
+        {
+          "col": 20,
+          "row": 14,
+          "w_cols": 1,
+          "h_rows": 8
+        },
+        {
+          "col": 39,
+          "row": 14,
+          "w_cols": 1,
+          "h_rows": 7
+        },
+        {
+          "col": 43,
+          "row": 14,
+          "w_cols": 11,
+          "h_rows": 1
+        },
+        {
+          "col": 43,
+          "row": 15,
+          "w_cols": 1,
+          "h_rows": 21
+        },
+        {
+          "col": 58,
+          "row": 16,
+          "w_cols": 2,
+          "h_rows": 1
+        },
+        {
+          "col": 24,
+          "row": 17,
+          "w_cols": 11,
+          "h_rows": 1
         },
         {
           "col": 46,
-          "row": 36,
-          "w_cols": 14,
-          "h_rows": 2
+          "row": 18,
+          "w_cols": 11,
+          "h_rows": 1
         },
         {
-          "col": 62,
-          "row": 36,
+          "col": 40,
+          "row": 20,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 61,
+          "row": 20,
+          "w_cols": 2,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 21,
+          "w_cols": 9,
+          "h_rows": 1
+        },
+        {
+          "col": 29,
+          "row": 22,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 47,
+          "row": 23,
+          "w_cols": 7,
+          "h_rows": 1
+        },
+        {
+          "col": 53,
+          "row": 24,
+          "w_cols": 1,
+          "h_rows": 12
+        },
+        {
+          "col": 58,
+          "row": 24,
+          "w_cols": 2,
+          "h_rows": 1
+        },
+        {
+          "col": 20,
+          "row": 25,
+          "w_cols": 9,
+          "h_rows": 1
+        },
+        {
+          "col": 30,
+          "row": 25,
+          "w_cols": 13,
+          "h_rows": 1
+        },
+        {
+          "col": 20,
+          "row": 26,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 39,
+          "row": 26,
+          "w_cols": 1,
+          "h_rows": 5
+        },
+        {
+          "col": 47,
+          "row": 27,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 29,
+          "w_cols": 11,
+          "h_rows": 1
+        },
+        {
+          "col": 65,
+          "row": 29,
+          "w_cols": 28,
+          "h_rows": 1
+        },
+        {
+          "col": 36,
+          "row": 30,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 92,
+          "row": 30,
+          "w_cols": 1,
+          "h_rows": 23
+        },
+        {
+          "col": 44,
+          "row": 31,
+          "w_cols": 5,
+          "h_rows": 1
+        },
+        {
+          "col": 57,
+          "row": 31,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 57,
+          "row": 32,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 20,
+          "row": 33,
+          "w_cols": 1,
+          "h_rows": 3
+        },
+        {
+          "col": 36,
+          "row": 34,
           "w_cols": 1,
           "h_rows": 2
         },
         {
-          "col": 20,
-          "row": 46,
-          "w_cols": 47,
-          "h_rows": 2
+          "col": 5,
+          "row": 35,
+          "w_cols": 9,
+          "h_rows": 1
         },
         {
-          "col": 20,
-          "row": 48,
-          "w_cols": 2,
-          "h_rows": 31
+          "col": 15,
+          "row": 35,
+          "w_cols": 1,
+          "h_rows": 1
+        },
+        {
+          "col": 19,
+          "row": 35,
+          "w_cols": 1,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 35,
+          "w_cols": 15,
+          "h_rows": 1
+        },
+        {
+          "col": 37,
+          "row": 35,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
+          "col": 47,
+          "row": 35,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
+          "col": 54,
+          "row": 35,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 58,
+          "row": 35,
+          "w_cols": 7,
+          "h_rows": 1
+        },
+        {
+          "col": 33,
+          "row": 36,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 51,
+          "row": 36,
+          "w_cols": 1,
+          "h_rows": 4
         },
         {
           "col": 63,
-          "row": 48,
+          "row": 36,
+          "w_cols": 2,
+          "h_rows": 3
+        },
+        {
+          "col": 42,
+          "row": 42,
+          "w_cols": 1,
+          "h_rows": 5
+        },
+        {
+          "col": 63,
+          "row": 42,
+          "w_cols": 2,
+          "h_rows": 5
+        },
+        {
+          "col": 5,
+          "row": 46,
+          "w_cols": 11,
+          "h_rows": 1
+        },
+        {
+          "col": 19,
+          "row": 46,
+          "w_cols": 23,
+          "h_rows": 1
+        },
+        {
+          "col": 43,
+          "row": 46,
+          "w_cols": 1,
+          "h_rows": 1
+        },
+        {
+          "col": 47,
+          "row": 46,
+          "w_cols": 16,
+          "h_rows": 1
+        },
+        {
+          "col": 14,
+          "row": 47,
+          "w_cols": 1,
+          "h_rows": 27
+        },
+        {
+          "col": 20,
+          "row": 47,
+          "w_cols": 1,
+          "h_rows": 9
+        },
+        {
+          "col": 38,
+          "row": 47,
+          "w_cols": 1,
+          "h_rows": 5
+        },
+        {
+          "col": 59,
+          "row": 47,
+          "w_cols": 1,
+          "h_rows": 22
+        },
+        {
+          "col": 43,
+          "row": 50,
+          "w_cols": 13,
+          "h_rows": 1
+        },
+        {
+          "col": 63,
+          "row": 50,
+          "w_cols": 2,
+          "h_rows": 24
+        },
+        {
+          "col": 24,
+          "row": 51,
+          "w_cols": 14,
+          "h_rows": 1
+        },
+        {
+          "col": 43,
+          "row": 51,
+          "w_cols": 1,
+          "h_rows": 7
+        },
+        {
+          "col": 33,
+          "row": 52,
+          "w_cols": 1,
+          "h_rows": 9
+        },
+        {
+          "col": 65,
+          "row": 52,
+          "w_cols": 27,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 55,
+          "w_cols": 8,
+          "h_rows": 1
+        },
+        {
+          "col": 50,
+          "row": 55,
+          "w_cols": 9,
+          "h_rows": 1
+        },
+        {
+          "col": 38,
+          "row": 57,
+          "w_cols": 5,
+          "h_rows": 1
+        },
+        {
+          "col": 44,
+          "row": 57,
+          "w_cols": 2,
+          "h_rows": 1
+        },
+        {
+          "col": 38,
+          "row": 58,
+          "w_cols": 1,
+          "h_rows": 3
+        },
+        {
+          "col": 45,
+          "row": 58,
+          "w_cols": 1,
+          "h_rows": 5
+        },
+        {
+          "col": 52,
+          "row": 59,
+          "w_cols": 1,
+          "h_rows": 15
+        },
+        {
+          "col": 20,
+          "row": 60,
+          "w_cols": 1,
+          "h_rows": 10
+        },
+        {
+          "col": 27,
+          "row": 60,
+          "w_cols": 6,
+          "h_rows": 1
+        },
+        {
+          "col": 27,
+          "row": 61,
+          "w_cols": 1,
+          "h_rows": 5
+        },
+        {
+          "col": 46,
+          "row": 62,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 53,
+          "row": 63,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 64,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 35,
+          "row": 66,
+          "w_cols": 12,
+          "h_rows": 1
+        },
+        {
+          "col": 35,
+          "row": 67,
+          "w_cols": 1,
+          "h_rows": 7
+        },
+        {
+          "col": 56,
+          "row": 68,
+          "w_cols": 3,
+          "h_rows": 1
+        },
+        {
+          "col": 21,
+          "row": 69,
+          "w_cols": 7,
+          "h_rows": 1
+        },
+        {
+          "col": 31,
+          "row": 69,
           "w_cols": 4,
-          "h_rows": 31
+          "h_rows": 1
+        },
+        {
+          "col": 27,
+          "row": 70,
+          "w_cols": 1,
+          "h_rows": 4
+        },
+        {
+          "col": 5,
+          "row": 73,
+          "w_cols": 9,
+          "h_rows": 1
+        },
+        {
+          "col": 15,
+          "row": 73,
+          "w_cols": 12,
+          "h_rows": 1
+        },
+        {
+          "col": 28,
+          "row": 73,
+          "w_cols": 7,
+          "h_rows": 1
+        },
+        {
+          "col": 36,
+          "row": 73,
+          "w_cols": 16,
+          "h_rows": 1
+        },
+        {
+          "col": 53,
+          "row": 73,
+          "w_cols": 10,
+          "h_rows": 1
         }
       ],
       "safe_paths": [],
@@ -716,18 +1268,35 @@
         {
           "id": "sanctum",
           "rect": {
-            "col": 64,
+            "col": 63,
+            "row": 39,
+            "w_cols": 2,
+            "h_rows": 3
+          },
+          "sprite_rect": {
+            "col": 63,
+            "row": 39,
+            "w_cols": 2,
+            "h_rows": 3
+          },
+          "path": "sprites/locked_gate.png",
+          "frame_w": 512,
+          "frame_h": 768
+        },
+        {
+          "id": "sanctum_final",
+          "rect": {
+            "col": 20,
             "row": 36,
             "w_cols": 2,
             "h_rows": 10
           },
           "sprite_rect": {
-            "col": 63,
+            "col": 19,
             "row": 36,
             "w_cols": 4,
             "h_rows": 10
           },
-          "support_rects": [],
           "path": "sprites/locked_gate_final.png",
           "frame_w": 512,
           "frame_h": 1280

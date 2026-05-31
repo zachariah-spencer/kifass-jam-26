@@ -71,58 +71,68 @@ class Game
   end
 
   def render_ambient_dust args, outputs = args.outputs
-    visible = {
-      x: @camera.x,
-      y: @camera.y,
-      w: @camera.visible_w,
-      h: @camera.visible_h
-    }
-    min_col = (visible[:x] / DUST_PARTICLE_CELL_SIZE).floor
-    max_col = ((visible[:x] + visible[:w]) / DUST_PARTICLE_CELL_SIZE).ceil
-    min_row = (visible[:y] / DUST_PARTICLE_CELL_SIZE).floor
-    max_row = ((visible[:y] + visible[:h]) / DUST_PARTICLE_CELL_SIZE).ceil
+    cam_x = @camera.x
+    cam_y = @camera.y
+    zoom = Camera::ZOOM
+    shake = @camera.shake_offset
+    shake_x = shake[:x]
+    shake_y = shake[:y]
+    min_col = (cam_x / DUST_PARTICLE_CELL_SIZE).floor
+    max_col = ((cam_x + @camera.visible_w) / DUST_PARTICLE_CELL_SIZE).ceil
+    min_row = (cam_y / DUST_PARTICLE_CELL_SIZE).floor
+    max_row = ((cam_y + @camera.visible_h) / DUST_PARTICLE_CELL_SIZE).ceil
     tick = Kernel.tick_count
+    two_pi = Math::PI * 2
 
-    dust = []
+    @dust_particle_cells ||= {}
     (min_col..max_col).each do |col|
       (min_row..max_row).each do |row|
-        seed = dust_particle_seed(col, row)
-        next unless seed % 100 < DUST_PARTICLE_DENSITY_PERCENT
+        particle = dust_particle_cell(col, row)
+        next unless particle
 
-        particle = ambient_dust_particle(col, row, seed, tick)
-        screen_rect = @camera.screen_rect(particle)
-        next if screen_rect[:x] < -6 || screen_rect[:x] > Grid.w + 6
-        next if screen_rect[:y] < -6 || screen_rect[:y] > Grid.h + 6
+        slow_phase = (tick + particle[:phase]) * two_pi / 420
+        fast_phase = (tick + particle[:fast_phase]) * two_pi / 260
+        drift_y = (tick * particle[:drift_speed]) % DUST_PARTICLE_CELL_SIZE
+        x = (particle[:base_x] + Math.sin(slow_phase) * 18 + Math.sin(fast_phase) * 5 - cam_x) * zoom + shake_x
+        y = (particle[:base_y] + Math.cos(slow_phase) * 12 + drift_y - cam_y) * zoom + shake_y
+        next if x < -6 || x > Grid.w + 6
+        next if y < -6 || y > Grid.h + 6
 
-        dust << screen_rect.merge(
+        outputs.primitives << {
+          x: x,
+          y: y,
+          w: particle[:size] * zoom,
+          h: particle[:size] * zoom,
           path: :solid,
           r: 255,
           g: 255,
           b: 255,
-          a: particle[:a]
-        )
+          a: (particle[:alpha] + Math.sin(fast_phase) * 18).to_i.clamp(DUST_PARTICLE_ALPHA_MIN, DUST_PARTICLE_ALPHA_MAX)
+        }
       end
     end
-    outputs.primitives << dust
   end
 
-  def ambient_dust_particle col, row, seed, tick
-    phase = seed % 360
-    slow_phase = (tick + phase) * Math::PI * 2 / 420
-    fast_phase = (tick + phase * 3) * Math::PI * 2 / 260
-    base_x = col * DUST_PARTICLE_CELL_SIZE + seed % DUST_PARTICLE_CELL_SIZE
-    base_y = row * DUST_PARTICLE_CELL_SIZE + seed.idiv(7) % DUST_PARTICLE_CELL_SIZE
-    drift_y = (tick * (0.012 + (seed % 7) * 0.002)) % DUST_PARTICLE_CELL_SIZE
-    size = seed % 5 == 0 ? 10 : 8
-    alpha = DUST_PARTICLE_ALPHA_MIN + seed % (DUST_PARTICLE_ALPHA_MAX - DUST_PARTICLE_ALPHA_MIN)
+  def dust_particle_cell col, row
+    @dust_particle_cells ||= {}
+    key = (col << 32) ^ (row & 0xffffffff)
+    return @dust_particle_cells[key] if @dust_particle_cells.key?(key)
 
-    {
-      x: base_x + Math.sin(slow_phase) * 18 + Math.sin(fast_phase) * 5,
-      y: base_y + Math.cos(slow_phase) * 12 + drift_y,
-      w: size,
-      h: size,
-      a: (alpha + Math.sin(fast_phase) * 18).to_i.clamp(DUST_PARTICLE_ALPHA_MIN, DUST_PARTICLE_ALPHA_MAX)
-    }
+    seed = dust_particle_seed(col, row)
+    @dust_particle_cells[key] = if seed % 100 < DUST_PARTICLE_DENSITY_PERCENT
+                                  phase = seed % 360
+                                  {
+                                    phase: phase,
+                                    fast_phase: phase * 3,
+                                    base_x: col * DUST_PARTICLE_CELL_SIZE + seed % DUST_PARTICLE_CELL_SIZE,
+                                    base_y: row * DUST_PARTICLE_CELL_SIZE + seed.idiv(7) % DUST_PARTICLE_CELL_SIZE,
+                                    drift_speed: 0.012 + (seed % 7) * 0.002,
+                                    size: seed % 5 == 0 ? 10 : 8,
+                                    alpha: DUST_PARTICLE_ALPHA_MIN + seed % (DUST_PARTICLE_ALPHA_MAX - DUST_PARTICLE_ALPHA_MIN)
+                                  }
+                                else
+                                  false
+                                end
   end
 
   def dust_particle_seed col, row

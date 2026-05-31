@@ -40,26 +40,23 @@ class Game
   end
 
   def render_env_tiles outputs, layer, alpha: 255
-    cells = layer[:cells]
-    occupied = layer[:occupied]
+    visible = env_visible_rect(ENV_TILE_SIZE)
+    transform = env_render_transform
 
-    cells.each do |col, row|
-      world_rect = {
-        x: col * ENV_TILE_SIZE,
-        y: row * ENV_TILE_SIZE,
-        w: ENV_TILE_SIZE,
-        h: ENV_TILE_SIZE
-      }
-      tile_rect = @camera.screen_rect(world_rect)
-      outputs.sprites << tile_rect.merge(
-        path: env_tile_path(env_tile_mask(col, row, occupied)),
-        w: tile_rect[:w],
-        h: tile_rect[:h],
+    env_layer_render_cells(layer).each do |cell|
+      next unless env_rect_visible?(cell, visible)
+
+      outputs.sprites << {
+        x: (cell[:x] - transform[:x]) * transform[:zoom] + transform[:shake_x],
+        y: (cell[:y] - transform[:y]) * transform[:zoom] + transform[:shake_y],
+        w: cell[:w] * transform[:zoom],
+        h: cell[:h] * transform[:zoom],
+        path: cell[:path],
         a: alpha
-      )
+      }
     end
 
-    render_env_tile_patches(outputs, layer[:patches], alpha: alpha)
+    render_env_tile_patches(outputs, env_layer_render_patches(layer), visible, transform, alpha: alpha)
   end
 
   def env_tile_mask col, row, occupied
@@ -75,20 +72,59 @@ class Game
 
   def env_tile_layer cells
     occupied = cells.each_with_object({}) { |cell, lookup| lookup[cell] = true }
+    visible_cells = occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) }
+    patches = env_inside_corner_patches(occupied)
     {
-      cells: occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) },
+      cells: visible_cells,
       occupied: occupied,
-      patches: env_inside_corner_patches(occupied)
+      patches: patches,
+      render_cells: env_tile_render_cells(visible_cells, occupied),
+      render_patches: env_tile_render_patches(patches)
     }
   end
 
   def env_tile_layer_without_patches cells
     occupied = cells.each_with_object({}) { |cell, lookup| lookup[cell] = true }
+    visible_cells = occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) }
     {
-      cells: occupied.keys.reject { |col, row| env_tile_internal?(col, row, occupied) },
+      cells: visible_cells,
       occupied: occupied,
-      patches: []
+      patches: [],
+      render_cells: env_tile_render_cells(visible_cells, occupied),
+      render_patches: []
     }
+  end
+
+  def env_tile_render_cells cells, occupied
+    cells.map do |col, row|
+      {
+        x: col * ENV_TILE_SIZE,
+        y: row * ENV_TILE_SIZE,
+        w: ENV_TILE_SIZE,
+        h: ENV_TILE_SIZE,
+        path: env_tile_path(env_tile_mask(col, row, occupied))
+      }
+    end
+  end
+
+  def env_tile_render_patches patches
+    patches.map do |patch|
+      {
+        x: patch[:x],
+        y: patch[:y],
+        w: ENV_TILE_PATCH_SIZE,
+        h: ENV_TILE_PATCH_SIZE,
+        path: ENV_TILE_PATCH_PATH
+      }
+    end
+  end
+
+  def env_layer_render_cells layer
+    layer[:render_cells] ||= env_tile_render_cells(layer[:cells], layer[:occupied])
+  end
+
+  def env_layer_render_patches layer
+    layer[:render_patches] ||= env_tile_render_patches(layer[:patches])
   end
 
   def env_tile_internal? col, row, occupied
@@ -98,21 +134,46 @@ class Game
       occupied[[col - 1, row]]
   end
 
-  def render_env_tile_patches outputs, patches, alpha: 255
+  def render_env_tile_patches outputs, patches, visible, transform, alpha: 255
     patches.each do |patch|
-      patch_rect = @camera.screen_rect(
-        x: patch[:x],
-        y: patch[:y],
-        w: ENV_TILE_PATCH_SIZE,
-        h: ENV_TILE_PATCH_SIZE
-      )
-      outputs.sprites << patch_rect.merge(
-        path: ENV_TILE_PATCH_PATH,
-        w: patch_rect[:w],
-        h: patch_rect[:h],
+      next unless env_rect_visible?(patch, visible)
+
+      outputs.sprites << {
+        x: (patch[:x] - transform[:x]) * transform[:zoom] + transform[:shake_x],
+        y: (patch[:y] - transform[:y]) * transform[:zoom] + transform[:shake_y],
+        w: patch[:w] * transform[:zoom],
+        h: patch[:h] * transform[:zoom],
+        path: patch[:path],
         a: alpha
-      )
+      }
     end
+  end
+
+  def env_render_transform
+    shake = @camera.shake_offset
+    {
+      x: @camera.x,
+      y: @camera.y,
+      zoom: @camera.zoom,
+      shake_x: shake[:x],
+      shake_y: shake[:y]
+    }
+  end
+
+  def env_visible_rect margin
+    {
+      x: @camera.x - margin,
+      y: @camera.y - margin,
+      w: @camera.visible_w + margin * 2,
+      h: @camera.visible_h + margin * 2
+    }
+  end
+
+  def env_rect_visible? rect, visible
+    rect[:x] + rect[:w] >= visible[:x] &&
+      rect[:x] <= visible[:x] + visible[:w] &&
+      rect[:y] + rect[:h] >= visible[:y] &&
+      rect[:y] <= visible[:y] + visible[:h]
   end
 
   def env_inside_corner_patches occupied

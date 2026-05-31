@@ -30,6 +30,10 @@ class Game
     request_reset_sequence(:archive_entrance, false)
   end
 
+  def request_sanctum_caught_reset
+    request_reset_sequence(:sanctum_exit, false)
+  end
+
   def request_archive_path_reset
     request_reset_sequence(:archive_entrance, false)
   end
@@ -95,6 +99,8 @@ class Game
       restart
     when :archive_entrance
       reset_player_to_archive_entrance
+    when :sanctum_exit
+      reset_player_to_sanctum_exit
     end
     @reset_sequence = reset_sequence
   end
@@ -133,6 +139,7 @@ class Game
     @player.x = spawn[:x]
     @player.y = spawn[:y]
     reset_archive_enemies if room_id == :archive
+    reset_sanctum_enemies if room_id == :sanctum
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @camera.snap_to(@player)
   end

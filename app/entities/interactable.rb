@@ -1,6 +1,6 @@
 class Interactable
   LIGHT_OSCILLATION_FRAMES = 72
-  PASSIVE_LIGHT_ALPHA = 50
+  PASSIVE_LIGHT_ALPHA = 20
   PASSIVE_LIGHT_PADDING = WorldScale.value(96)
 
   attr_accessor :x, :y
@@ -74,7 +74,7 @@ class Interactable
 
   def render_light args, outputs = args.outputs, camera = nil
     light_center = camera ? camera.screen_point(center) : center
-    light_size = [@w, @h].max + PASSIVE_LIGHT_PADDING
+    light_size = [@w, @h].max / 2# + PASSIVE_LIGHT_PADDING
     outputs.sprites << light_center.merge(
       path: "sprites/mask.png",
       w: light_size,

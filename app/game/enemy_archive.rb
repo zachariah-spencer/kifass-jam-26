@@ -236,7 +236,13 @@ class Game
 
   def reset_player_if_off_archive_path
     return false unless @current_room_id == :archive
-    return false if point_on_archive_safe_path?(@player.center)
+    if point_on_archive_safe_path?(@player.center)
+      clear_archive_off_path_warning
+      return false
+    end
+
+    @archive_off_path_started_at ||= Kernel.tick_count
+    return false unless archive_off_path_warning_elapsed >= ARCHIVE_OFF_PATH_WARNING_FRAMES
 
     request_archive_path_reset
     true
@@ -247,10 +253,25 @@ class Game
     @player.x = spawn[:x]
     @player.y = spawn[:y]
     @player.stop!
+    clear_archive_off_path_warning
     close_altar
     clear_interaction_text
     reset_archive_enemies
     @camera.snap_to(@player)
+  end
+
+  def clear_archive_off_path_warning
+    @archive_off_path_started_at = nil
+  end
+
+  def archive_off_path_warning_active?
+    @current_room_id == :archive && !!@archive_off_path_started_at && !reset_sequence_active?
+  end
+
+  def archive_off_path_warning_elapsed
+    return 0 unless @archive_off_path_started_at
+
+    Kernel.tick_count - @archive_off_path_started_at
   end
 
   def reset_archive_enemies

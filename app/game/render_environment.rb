@@ -187,16 +187,37 @@ class Game
 
   def render_archive_safe_paths args, outputs = args.outputs
     return unless @current_room_id == :archive
-    return unless @learned_words.include?("MIRROR")
-    return if @sacrificed_words.include?("MIRROR")
+    return unless @learned_words.include?("MIRROR") || @sacrificed_words.include?("MIRROR")
 
     pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
-    render_env_tiles(
-      outputs,
-      cached_env_tile_cells(:archive_safe_paths) do
-        archive_safe_paths.flat_map { |path| rect_fill_cells(path) }.uniq
-      end,
-      alpha: (55 + pulse * 18).to_i
-    )
+    if @sacrificed_words.include?("MIRROR")
+      render_env_tiles(
+        outputs,
+        cached_env_tile_cells(:sacrificed_mirror_safe_paths) { sacrificed_mirror_safe_path_cells },
+        alpha: (24 + pulse * 8).to_i
+      )
+    else
+      render_env_tiles(
+        outputs,
+        cached_env_tile_cells(:archive_safe_paths) { archive_safe_path_cells },
+        alpha: (125 + pulse * 45).to_i
+      )
+    end
+  end
+
+  def archive_safe_path_cells
+    archive_safe_paths.flat_map { |path| rect_fill_cells(path) }.uniq
+  end
+
+  def sacrificed_mirror_safe_path_cells
+    @sacrificed_mirror_safe_path_cells ||= begin
+      cells = archive_safe_path_cells
+      keep_count = (cells.length * 0.25).ceil
+      cells.sort_by { |col, row| sacrificed_mirror_cell_seed(col, row) }.first(keep_count)
+    end
+  end
+
+  def sacrificed_mirror_cell_seed col, row
+    ((col * 73_856_093) ^ (row * 19_349_663) ^ 0x4d1_220).abs
   end
 end

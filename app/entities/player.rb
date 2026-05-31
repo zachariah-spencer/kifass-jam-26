@@ -149,9 +149,9 @@ class Player
     @dx.abs > MOVING_EPSILON || @dy.abs > MOVING_EPSILON
   end
 
-  def render_light args, outputs = args.outputs, camera = nil
+  def render_light args, outputs = args.outputs, camera = nil, light_multiplier = 1.0
     light_center = camera ? camera.screen_point(center) : center
-    light_size = oscillating_light_size(@light_size, LIGHT_OSCILLATION_AMOUNT)
+    light_size = oscillating_light_size(@light_size, LIGHT_OSCILLATION_AMOUNT) * light_multiplier
     outputs.sprites << light_center.merge(
       path: "sprites/mask.png",
       w: light_size,

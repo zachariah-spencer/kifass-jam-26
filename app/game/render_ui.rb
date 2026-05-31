@@ -9,8 +9,23 @@ class Game
     end
     render_mechanic_feedback(args)
     render_bell_cooldown_indicator(args)
+    render_archive_off_path_warning(args)
     render_altar(args) if @altar_open
     args.outputs.labels << Render.label(36, 40, "Press R to forget it all...", :ash, size_enum: -1)
+  end
+
+  def render_archive_off_path_warning args
+    return unless archive_off_path_warning_active?
+
+    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 24)
+    alpha = ((pulse + 1) * 25).to_i
+    color = Render.color(:ash)
+    edge = 40
+    args.outputs.primitives << { x: edge, y: Grid.h - edge, w: Grid.w - (edge * 2), h: edge, path: :solid, **color, a: alpha }
+    args.outputs.primitives << { x: edge, y: 0, w: Grid.w - (edge * 2), h: edge, path: :solid, **color, a: alpha }
+    args.outputs.primitives << { x: 0, y: 0, w: edge, h: Grid.h, path: :solid, **color, a: alpha }
+    args.outputs.primitives << { x: Grid.w - edge, y: 0, w: edge, h: Grid.h, path: :solid, **color, a: alpha }
+    args.outputs.labels << Render.label(640, 142, ARCHIVE_OFF_PATH_WARNING_TEXT, :ember, size_enum: 1, alignment_enum: 1, a: 230)
   end
 
   def render_bell_cooldown_indicator args

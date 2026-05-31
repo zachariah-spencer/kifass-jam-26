@@ -31,6 +31,8 @@ class Game
   RESET_HINT_HOLD_FRAMES = 2.seconds
   RESET_FADE_IN_FRAMES = 0.35.seconds
   ARCHIVE_PATH_RESET_FADE_FRAMES = 0.2.seconds
+  ARCHIVE_OFF_PATH_WARNING_FRAMES = 0.75.seconds
+  ARCHIVE_OFF_PATH_WARNING_TEXT = "You begin slipping into the void..."
   ALTAR_PANEL = { x: 430, y: 190, w: 420, h: 330 }
   ALTAR_WORD_ROW_H = 42
   ROOM_FADE_OUT_FRAMES = 8
@@ -130,6 +132,8 @@ class Game
     @pointer_tap = nil
     @pointer_drag_vector = nil
     @env_tile_cache = {}
+    @sacrificed_mirror_safe_path_cells = nil
+    @archive_off_path_started_at = nil
     @key_gate_states = {}
     reset_key_gate_states
     @bell_last_used_at = nil

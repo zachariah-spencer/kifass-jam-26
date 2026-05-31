@@ -201,7 +201,56 @@
           "unlock_altar_id": "archive_altar"
         }
       ],
-      "barriers": [],
+      "barriers": [
+        {
+          "col": 79,
+          "row": 11,
+          "w_cols": 47,
+          "h_rows": 1
+        },
+        {
+          "col": 4,
+          "row": 12,
+          "w_cols": 76,
+          "h_rows": 1
+        },
+        {
+          "col": 125,
+          "row": 12,
+          "w_cols": 1,
+          "h_rows": 61
+        },
+        {
+          "col": 4,
+          "row": 13,
+          "w_cols": 1,
+          "h_rows": 60
+        },
+        {
+          "col": 78,
+          "row": 34,
+          "w_cols": 2,
+          "h_rows": 16
+        },
+        {
+          "col": 78,
+          "row": 53,
+          "w_cols": 2,
+          "h_rows": 20
+        },
+        {
+          "col": 5,
+          "row": 72,
+          "w_cols": 73,
+          "h_rows": 1
+        },
+        {
+          "col": 80,
+          "row": 72,
+          "w_cols": 45,
+          "h_rows": 1
+        }
+      ],
       "safe_paths": [
         {
           "col": 88,

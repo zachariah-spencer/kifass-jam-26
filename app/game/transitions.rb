@@ -125,6 +125,7 @@ class Game
   end
 
   def enter_room room_id, spawn_id
+    clear_archive_off_path_warning
     @current_room_id = room_id
     room = current_room
     @archive_reset_spawn_id = archive_reset_spawn_for(spawn_id) if room_id == :archive

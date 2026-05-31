@@ -49,7 +49,7 @@ class Game
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
     current_enemies.each { |enemy| enemy.render_light(args, args.outputs[:darkness], @camera) }
-    @player.render_light(args, args.outputs[:darkness], @camera)
+    @player.render_light(args, args.outputs[:darkness], @camera, archive_off_path_light_multiplier)
 
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :darkness }
@@ -61,6 +61,13 @@ class Game
     else
       interactable.render(args, outputs, @camera)
     end
+  end
+
+  def archive_off_path_light_multiplier
+    return 1.0 unless archive_off_path_warning_active?
+
+    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 10)
+    (0.66 + pulse * 0.14).clamp(0.5, 1.0)
   end
 
   def render_ambient_dust args, outputs = args.outputs

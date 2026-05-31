@@ -71,6 +71,17 @@ class NameEntryScene < BaseScene
   UI_FADE_OUT_FRAMES = 0.55.seconds
   THANKS_FADE_FRAMES = 0.9.seconds
   THANKS_COMPLETE_DELAY_FRAMES = 2.seconds
+  MEMORY_HINT_DELAY_FRAMES = 1.seconds
+  THANKS_LINES = [
+    "Thank you, %{name}...",
+    "Our identities and our memories of them are what make us, after all..."
+  ]
+  MEMORY_HINT_LINES = [
+    "Your memory has failed you in a world where remembrance is everything.",
+    "Explore to remember names. Remembered names make you stronger.",
+    "But every door demands a name.",
+    "What are you willing to leave behind?"
+  ]
   KEY_W = 58
   KEY_H = 42
   KEY_GAP = 10
@@ -119,7 +130,11 @@ class NameEntryScene < BaseScene
     when :thanks_fade_in
       set_phase(:thanks_hold) if phase_elapsed >= THANKS_FADE_FRAMES
     when :thanks_hold
-      set_phase(:thanks_fade_out) if thanks_ready_to_fade_out?
+      set_phase(:memory_hint_delay) if thanks_ready_for_memory_hint?
+    when :memory_hint_delay
+      set_phase(:memory_hint_hold) if phase_elapsed >= MEMORY_HINT_DELAY_FRAMES
+    when :memory_hint_hold
+      set_phase(:thanks_fade_out) if memory_hint_ready_to_fade_out?
     when :thanks_fade_out
       args.state.next_scene = :play if phase_elapsed >= THANKS_FADE_FRAMES
     end
@@ -279,9 +294,13 @@ class NameEntryScene < BaseScene
     alpha = thanks_alpha
     return if alpha <= 0
 
-    lines = visible_thanks_lines
-    args.outputs.labels << Render.label(640, 408, lines[0], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
-    args.outputs.labels << Render.label(640, 348, lines[1], :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+    if memory_hint_visible?
+      render_memory_hint(alpha)
+    else
+      lines = visible_thanks_lines
+      args.outputs.labels << Render.label(640, 408, lines[0], :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+      args.outputs.labels << Render.label(640, 348, lines[1], :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+    end
   end
 
   def prompt_alpha
@@ -304,7 +323,7 @@ class NameEntryScene < BaseScene
     case @phase
     when :thanks_fade_in
       (phase_elapsed * 255 / THANKS_FADE_FRAMES).clamp(0, 255)
-    when :thanks_hold
+    when :thanks_hold, :memory_hint_hold
       255
     when :thanks_fade_out
       (255 - phase_elapsed * 255 / THANKS_FADE_FRAMES).clamp(0, 255)
@@ -314,10 +333,7 @@ class NameEntryScene < BaseScene
   end
 
   def visible_thanks_lines
-    lines = [
-      "Thank you, #{@submitted_name}...",
-      "Our identities and our memories of them are what make us, after all..."
-    ]
+    lines = thanks_lines
     return lines if @phase == :thanks_fade_out
 
     visible_lines_for_character_count(lines, thanks_character_count)
@@ -329,11 +345,10 @@ class NameEntryScene < BaseScene
   end
 
   def visible_thanks_text_length
-    "Thank you, #{@submitted_name}...".length +
-      "Our identities and our memories of them are what make us, after all...".length
+    text_length(thanks_lines)
   end
 
-  def thanks_ready_to_fade_out?
+  def thanks_ready_for_memory_hint?
     thanks_total_elapsed >= thanks_complete_at + THANKS_COMPLETE_DELAY_FRAMES
   end
 
@@ -343,6 +358,45 @@ class NameEntryScene < BaseScene
 
   def thanks_complete_at
     (visible_thanks_text_length - 1) * Game::MESSAGE_CHARACTER_INTERVAL
+  end
+
+  def render_memory_hint alpha
+    visible_memory_hint_lines.each_with_index do |line, index|
+      args.outputs.labels << Render.label(640, 444 - index * 48, line, :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+    end
+  end
+
+  def visible_memory_hint_lines
+    return MEMORY_HINT_LINES if @phase == :thanks_fade_out
+
+    visible_lines_for_character_count(MEMORY_HINT_LINES, memory_hint_character_count)
+  end
+
+  def memory_hint_character_count
+    phase_elapsed.idiv(Game::MESSAGE_CHARACTER_INTERVAL) + 1
+  end
+
+  def memory_hint_ready_to_fade_out?
+    phase_elapsed >= memory_hint_complete_at + THANKS_COMPLETE_DELAY_FRAMES
+  end
+
+  def memory_hint_complete_at
+    (text_length(MEMORY_HINT_LINES) - 1) * Game::MESSAGE_CHARACTER_INTERVAL
+  end
+
+  def memory_hint_visible?
+    [:memory_hint_hold, :thanks_fade_out].include?(@phase)
+  end
+
+  def thanks_lines
+    [
+      THANKS_LINES[0] % { name: @submitted_name },
+      THANKS_LINES[1]
+    ]
+  end
+
+  def text_length lines
+    lines.map(&:length).sum
   end
 
   def visible_lines_for_character_count lines, character_count

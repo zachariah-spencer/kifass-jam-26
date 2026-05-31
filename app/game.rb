@@ -31,6 +31,7 @@ class Game
   RIGHT_EXIT_SPAWN_X = G[117]
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
+  ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
   SACRIFICE_SCRAMBLE_SYMBOLS = "!@#$%^&*?+=~[]{}/\\"
@@ -112,6 +113,7 @@ class Game
     @sacrificed_object_ids = []
     @altar_open = false
     @active_altar = nil
+    @altar_reinforcement_shown = false
     @room_transition = nil
     @reset_sequence = nil
     @archive_reset_spawn_id = :from_hall
@@ -816,6 +818,11 @@ class Game
 
     @active_altar = altar
     @altar_open = true
+    unless @altar_reinforcement_shown
+      @altar_reinforcement_shown = true
+      return ALTAR_REINFORCEMENT_TEXT
+    end
+
     sacrificeable_words.empty? ? "The altar waits for a name." : "Choose a name to sacrifice."
   end
 

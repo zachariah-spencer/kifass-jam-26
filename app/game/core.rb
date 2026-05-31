@@ -42,11 +42,22 @@ class Game
   POINTER_TAP_MAX_FRAMES = 0.25.seconds
   ARCHIVE_SAFE_PATH_TOLERANCE = S.value(18)
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
-  BELL_STUN_FRAMES = 3.seconds
-  BELL_COOLDOWN_FRAMES = BELL_STUN_FRAMES
+  BELL_COOLDOWN_FRAMES = 3.seconds
+  BELL_STUN_FRAMES = BELL_COOLDOWN_FRAMES / 2
   BELL_FAILED_PULSE_FRAMES = 0.1.seconds
+  LEARNED_LAMP_EFFECT_IN_FRAMES = 0.12.seconds
+  LEARNED_LAMP_EFFECT_SETTLE_FRAMES = 0.9.seconds
+  LEARNED_LAMP_EFFECT_FRAMES = LEARNED_LAMP_EFFECT_IN_FRAMES + LEARNED_LAMP_EFFECT_SETTLE_FRAMES
+  LEARNED_LAMP_LIGHT_SIZE = 2048
+  LEARNED_LAMP_PEAK_LIGHT_SIZE = 5000
+  SACRIFICED_LAMP_LIGHT_SIZE = 1096
+  SACRIFICED_LAMP_EFFECT_FRAMES = 0.5.seconds
+  LEARNED_KEY_EFFECT_FRAMES = 1.0.seconds
+  LEARNED_MIRROR_EFFECT_IN_FRAMES = 0.12.seconds
+  LEARNED_MIRROR_EFFECT_SETTLE_FRAMES = 0.7.seconds
+  BELL_RING_PULSE_FRAMES = 1.0.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
-  MECHANIC_FEEDBACK_FRAMES = BELL_STUN_FRAMES
+  MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES
   LEARNED_WORD_MESSAGES = {
     "BELL" => BELL_TOOLTIP_TEXT,
     "KEY" => "You hear the clanging of metal gates opening nearby.",
@@ -138,6 +149,9 @@ class Game
     reset_key_gate_states
     @bell_last_used_at = nil
     @bell_failed_pulse_until = nil
+    @learned_word_effects = {}
+    @player_light_size_effect = nil
+    @bell_ring_pulses = []
     @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false
     @ending_phase = nil

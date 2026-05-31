@@ -149,6 +149,7 @@ class Game
     end
 
     @bell_last_used_at = Kernel.tick_count
+    add_bell_ring_pulse(@player.center)
     current_enemies.each { |enemy| enemy.stun!(BELL_STUN_FRAMES) }
   end
 

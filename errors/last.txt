@@ -1,18 +1,5 @@
-* EXCEPTION:
-* EXCEPTION: ~Runtime#add_to_require_queue~ failed for =app/game/core.rb=.
-* ERROR: :seconds method missing on ~Class~.
-
-#+begin_src ~Class#inspect~
-Game
-#+end_src ~Class#inspect~
-
-
-
-The method named
-  :seconds
-doesn't exist on [Class, Game].
-
-(suggestions above)
+* EXCEPTION: non float value
 ** Backtrace:
-*** app/game/core.rb:34
-*** app/game/core.rb:1
+*** app/root_scene.rb:58:in update_scene_transition
+*** app/root_scene.rb:24:in tick
+*** app/main.rb:13:in tick

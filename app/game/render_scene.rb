@@ -42,6 +42,7 @@ class Game
     render_room_barriers(args, args.outputs[:scene])
     render_archive_safe_paths(args, args.outputs[:scene])
     interactables.each { |interactable| render_interactable(args, interactable, args.outputs[:scene]) }
+    render_bell_ring_pulses(args.outputs[:scene])
     nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) unless input_locked? }
     current_enemies.each { |enemy| enemy.render(args, args.outputs[:scene], @camera) }
     @player.render(args, args.outputs[:scene], @camera, player_alpha)
@@ -49,7 +50,15 @@ class Game
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
     interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
     current_enemies.each { |enemy| enemy.render_light(args, args.outputs[:darkness], @camera) }
-    @player.render_light(args, args.outputs[:darkness], @camera, archive_off_path_light_multiplier)
+    lamp_effect = learned_word_effect("LAMP", LEARNED_LAMP_EFFECT_FRAMES)
+    if lamp_effect
+      render_lamp_power_up_player_light(args.outputs[:darkness], lamp_effect)
+    elsif @player_light_size_effect
+      render_player_light_size_effect(args.outputs[:darkness])
+    else
+      @player.render_light(args, args.outputs[:darkness], @camera, archive_off_path_light_multiplier)
+    end
+    render_lamp_power_up_lights(args.outputs[:scene], args.outputs[:darkness], lamp_effect)
 
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :scene }
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :darkness }
@@ -68,6 +77,162 @@ class Game
 
     pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 10)
     (0.66 + pulse * 0.14).clamp(0.5, 1.0)
+  end
+
+  def render_lamp_power_up_lights scene_outputs, darkness_outputs, effect
+    return unless effect
+
+    progress = effect[:progress]
+    strength = 1.0 - progress
+    bloom = Math.sin(progress * Math::PI)
+    player_center = @camera.screen_point(@player.center)
+    player_light_size = lamp_power_up_player_light_size(effect)
+    render_teal_lamp_bloom(scene_outputs, player_center, player_light_size, (170 * strength).to_i)
+
+    visible = camera_world_rect(384)
+    interactables.each do |interactable|
+      next unless interactable.is_a?(Lamp)
+      next unless rects_intersect?(interactable.rect, visible)
+
+      light_center = @camera.screen_point(interactable.center)
+      light_size = Lamp::LIGHT_SIZE.lerp(Lamp::LIGHT_SIZE + 520, bloom) * @camera.zoom
+      render_teal_lamp_bloom(scene_outputs, light_center, light_size, (145 * strength).to_i)
+      darkness_outputs.sprites << light_center.merge(
+        path: "sprites/mask.png",
+        w: light_size,
+        h: light_size,
+        anchor_x: 0.5,
+        anchor_y: 0.5,
+        a: (210 * strength).to_i,
+        blendmode: Render::HOLE_PUNCH_BLENDMODE
+      )
+    end
+  end
+
+  def render_teal_lamp_bloom outputs, center, size, alpha
+    outputs.sprites << center.merge(
+      path: "sprites/mask.png",
+      w: size,
+      h: size,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      r: 255,
+      g: 255,
+      b: 0,
+      a: alpha
+    )
+  end
+
+  def render_lamp_power_up_player_light outputs, effect
+    light_center = @camera.screen_point(@player.center)
+    light_size = lamp_power_up_player_light_size(effect) * archive_off_path_light_multiplier
+    outputs.sprites << light_center.merge(
+      path: "sprites/mask.png",
+      w: light_size,
+      h: light_size,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      r: 255,
+      g: 255,
+      b: 0,
+      blendmode: Render::HOLE_PUNCH_BLENDMODE
+    )
+  end
+
+  def render_player_light_size_effect outputs
+    progress = effect_progress(@player_light_size_effect[:started_at], @player_light_size_effect[:duration])
+    unless progress
+      @player_light_size_effect = nil
+      @player.render_light(nil, outputs, @camera, archive_off_path_light_multiplier)
+      return
+    end
+
+    light_center = @camera.screen_point(@player.center)
+    from_size = player_light_render_size(@player_light_size_effect[:from_size])
+    to_size = player_light_render_size(@player_light_size_effect[:to_size])
+    light_size = from_size.lerp(to_size, progress) * archive_off_path_light_multiplier
+    outputs.sprites << light_center.merge(
+      path: "sprites/mask.png",
+      w: light_size,
+      h: light_size,
+      anchor_x: 0.5,
+      anchor_y: 0.5,
+      blendmode: Render::HOLE_PUNCH_BLENDMODE
+    )
+  end
+
+  def lamp_power_up_player_light_size effect
+    progress = effect[:progress]
+    from_size = player_light_render_size(effect[:previous_player_light_size] || @player.light_size)
+    to_size = player_light_render_size(effect[:learned_player_light_size] || @player.light_size)
+    in_progress = LEARNED_LAMP_EFFECT_IN_FRAMES.to_f / LEARNED_LAMP_EFFECT_FRAMES
+    if progress <= in_progress
+      local_progress = (progress / in_progress).clamp(0, 1)
+      from_size.lerp(LEARNED_LAMP_PEAK_LIGHT_SIZE, local_progress)
+    else
+      local_progress = ((progress - in_progress) / (1.0 - in_progress)).clamp(0, 1)
+      LEARNED_LAMP_PEAK_LIGHT_SIZE.lerp(to_size, local_progress)
+    end
+  end
+
+  def player_light_render_size base_size
+    @player.oscillating_light_size(base_size, Player::LIGHT_OSCILLATION_AMOUNT)
+  end
+
+  def render_bell_ring_pulses outputs
+    return if @bell_ring_pulses.empty?
+
+    @bell_ring_pulses.reject! do |pulse|
+      progress = effect_progress(pulse[:started_at], BELL_RING_PULSE_FRAMES)
+      next true unless progress
+
+      center = @camera.screen_point(pulse)
+      radius = 30.lerp(1500, progress) * @camera.zoom
+      alpha = (220 * (1.0 - progress)).to_i
+      ring = {
+        x: center[:x] - radius,
+        y: center[:y] - radius,
+        w: radius * 2,
+        h: radius * 2
+      }
+      outputs.borders << ring.merge(r: 255, g: 255, b: 255, a: alpha)
+      outputs.borders << ring.merge(x: ring[:x] + 4, y: ring[:y] + 4, w: ring[:w] - 8, h: ring[:h] - 8, r: 255, g: 188, b: 86, a: (alpha * 0.65).to_i)
+      false
+    end
+  end
+
+  def learned_word_effect_progress word, duration
+    effect = learned_word_effect(word, duration)
+    effect && effect[:progress]
+  end
+
+  def learned_word_effect word, duration
+    effect = @learned_word_effects[word]
+    return nil unless effect
+
+    progress = effect_progress(effect[:started_at], duration)
+    unless progress
+      @learned_word_effects.delete(word)
+      return nil
+    end
+
+    effect.merge(progress: progress)
+  end
+
+  def effect_progress started_at, duration
+    progress = (Kernel.tick_count - started_at).to_f / duration
+    return nil if progress >= 1.0
+
+    progress.clamp(0, 1)
+  end
+
+  def camera_world_rect padding = 0
+    {
+      x: @camera.x - padding,
+      y: @camera.y - padding,
+      w: @camera.visible_w + padding * 2,
+      h: @camera.visible_h + padding * 2
+    }
   end
 
   def render_ambient_dust args, outputs = args.outputs

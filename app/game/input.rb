@@ -60,10 +60,19 @@ class Game
     }
   end
 
+  def play_altar_crashing_sound args
+    @altar_crashing_audio_index += 1
+    args.audio[:"altar_crashing_#{@altar_crashing_audio_index}"] = {
+      input: ALTAR_CRASHING_SOUND_PATH,
+      gain: ALTAR_CRASHING_GAIN.to_f,
+      looping: false
+    }
+  end
+
   def handle_interaction args
     taps = pointer_taps
     tap = taps.first
-    return handle_altar_selection(tap) if @altar_open && tap
+    return handle_altar_selection(args, tap) if @altar_open && tap
     return if @altar_open
 
     taps.each do |candidate_tap|

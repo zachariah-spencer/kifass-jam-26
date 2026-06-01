@@ -34,19 +34,21 @@ class Game
     sacrificeable_words.empty? ? "The altar waits for a name." : "Choose a name to sacrifice."
   end
 
-  def handle_altar_selection click
+  def handle_altar_selection args, click
     word = altar_word_at(click)
 
     if word
-      sacrifice_word(word)
+      sacrifice_word(args, word)
     else
       close_altar
       set_interaction_text(nil)
     end
   end
 
-  def sacrifice_word word
+  def sacrifice_word args, word
     return unless sacrificeable_words.include?(word)
+
+    play_altar_crashing_sound(args)
 
     active_altar_id = @active_altar ? @active_altar.id : nil
     if player_name_word?(word)

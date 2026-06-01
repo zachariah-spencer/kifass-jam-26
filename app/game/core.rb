@@ -20,6 +20,8 @@ class Game
   TYPING_PITCH_MAX = 1.05
   SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
   SCRAMBLE_GAIN = 1.0
+  ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
+  ALTAR_CRASHING_GAIN = 50.0
   ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
@@ -182,6 +184,7 @@ class Game
     @footstep_audio_index = 0
     @typing_audio_index = 0
     @scramble_audio_index = 0
+    @altar_crashing_audio_index = 0
     @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false
     @ending_phase = nil

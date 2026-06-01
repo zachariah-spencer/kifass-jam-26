@@ -1,6 +1,16 @@
 class RootScene
   SCENE_FADE_OUT_FRAMES = 8
   SCENE_FADE_IN_FRAMES = 8
+  MUSIC_GAIN = 1.0
+  MUSIC_CROSSFADE_FRAMES = 1.5.seconds
+  MUSIC_KEYS = [:bg_music_a, :bg_music_b]
+  MENU_MUSIC_PATH = "sounds/bg_menu.ogg"
+  ATMOSPHERE_MUSIC_PATH = "sounds/bg_atmosphere.ogg"
+  SCENE_MUSIC = {
+    title: MENU_MUSIC_PATH,
+    name_entry: ATMOSPHERE_MUSIC_PATH,
+    play: ATMOSPHERE_MUSIC_PATH
+  }
 
   attr_accessor :args
   attr_reader :game
@@ -22,6 +32,7 @@ class RootScene
   def tick
     defaults
     update_scene_transition
+    update_music
 
     scene_before_tick = args.state.scene
     scene = current_scene
@@ -33,6 +44,7 @@ class RootScene
     end
 
     start_scene_transition if args.state.next_scene && !args.state.scene_transition
+    update_music
     render_transition
   end
 
@@ -77,6 +89,68 @@ class RootScene
 
     current_scene.args = args
     current_scene.activate!
+  end
+
+  def update_music
+    desired_input = SCENE_MUSIC[args.state.scene]
+    return unless desired_input
+
+    args.state.active_music_key ||= MUSIC_KEYS.first
+    args.state.current_music_input ||= nil
+    start_music(desired_input) unless active_music
+    crossfade_music(desired_input) if args.state.current_music_input != desired_input
+    update_music_crossfade
+  end
+
+  def start_music input
+    args.audio[args.state.active_music_key] = {
+      input: input,
+      looping: true,
+      gain: MUSIC_GAIN
+    }
+    args.state.current_music_input = input
+  end
+
+  def crossfade_music input
+    old_key = args.state.active_music_key
+    new_key = inactive_music_key
+
+    args.audio.delete(new_key)
+    args.audio[new_key] = {
+      input: input,
+      looping: true,
+      gain: 0.0
+    }
+    args.state.previous_music_key = old_key
+    args.state.active_music_key = new_key
+    args.state.current_music_input = input
+    args.state.music_crossfade_started_at = Kernel.tick_count
+  end
+
+  def update_music_crossfade
+    fade_started_at = args.state.music_crossfade_started_at
+    return unless fade_started_at
+
+    progress = ((Kernel.tick_count - fade_started_at).to_f / MUSIC_CROSSFADE_FRAMES).clamp(0.0, 1.0)
+    active = active_music
+    previous = args.audio[args.state.previous_music_key]
+
+    active.gain = (MUSIC_GAIN * progress).clamp(0.0, MUSIC_GAIN) if active
+    previous.gain = (MUSIC_GAIN * (1.0 - progress)).clamp(0.0, MUSIC_GAIN) if previous
+
+    return if progress < 1.0
+
+    args.audio.delete(args.state.previous_music_key)
+    args.state.previous_music_key = nil
+    args.state.music_crossfade_started_at = nil
+  end
+
+  def active_music
+    args.audio[args.state.active_music_key]
+  end
+
+  def inactive_music_key
+    (MUSIC_KEYS - [args.state.active_music_key]).first
   end
 
   def render_transition

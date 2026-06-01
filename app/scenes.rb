@@ -115,6 +115,9 @@ class NameEntryScene < BaseScene
     @held_key_value = nil
     @skip_confirmation_started_at = nil
     @skip_touch_ids = {}
+    @prompt_visible_character_count = 0
+    @thanks_visible_character_count = 0
+    @memory_hint_visible_character_count = 0
   end
 
   def tick
@@ -145,6 +148,36 @@ class NameEntryScene < BaseScene
     when :thanks_fade_out
       args.state.next_scene = :play if phase_elapsed >= THANKS_FADE_FRAMES
     end
+
+    update_typing_sound
+  end
+
+  def update_typing_sound
+    update_prompt_typing_sound
+    update_thanks_typing_sound
+    update_memory_hint_typing_sound
+  end
+
+  def update_prompt_typing_sound
+    visible_character_count = @phase == :prompt ? visible_prompt_text.length : 0
+    play_typing_sound_for_reveal(:prompt, visible_character_count)
+  end
+
+  def update_thanks_typing_sound
+    visible_character_count = [:thanks_fade_in, :thanks_hold].include?(@phase) ? visible_thanks_character_count : 0
+    play_typing_sound_for_reveal(:thanks, visible_character_count)
+  end
+
+  def update_memory_hint_typing_sound
+    visible_character_count = @phase == :memory_hint_hold ? visible_memory_hint_character_count : 0
+    play_typing_sound_for_reveal(:memory_hint, visible_character_count)
+  end
+
+  def play_typing_sound_for_reveal sequence, visible_character_count
+    instance_variable_name = :"@#{sequence}_visible_character_count"
+    previous_character_count = instance_variable_get(instance_variable_name) || 0
+    @game.play_typing_sound(args) if visible_character_count > previous_character_count
+    instance_variable_set(instance_variable_name, visible_character_count)
   end
 
   def handle_intro_skip_input
@@ -373,6 +406,10 @@ class NameEntryScene < BaseScene
     text_length(thanks_lines)
   end
 
+  def visible_thanks_character_count
+    thanks_character_count.clamp(0, visible_thanks_text_length)
+  end
+
   def thanks_ready_for_memory_hint?
     thanks_total_elapsed >= thanks_complete_at + THANKS_COMPLETE_DELAY_FRAMES
   end
@@ -399,6 +436,10 @@ class NameEntryScene < BaseScene
 
   def memory_hint_character_count
     phase_elapsed.idiv(Game::MESSAGE_CHARACTER_INTERVAL) + 1
+  end
+
+  def visible_memory_hint_character_count
+    memory_hint_character_count.clamp(0, text_length(MEMORY_HINT_LINES))
   end
 
   def memory_hint_ready_to_fade_out?

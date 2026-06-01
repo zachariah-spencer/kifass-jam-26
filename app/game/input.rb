@@ -12,9 +12,10 @@ class Game
     update_pointer_gesture(args)
     handle_debug_input(args)
     handle_interaction(args)
-    update_interaction_text
+    update_interaction_text(args)
     interactables.each { |interactable| interactable.update(args) }
     @player.update(args, nil, active_barriers, pointer_movement_vector)
+    update_player_footsteps(args, @player.moving?)
     close_altar_if_player_left_range
     return if reset_player_if_off_archive_path
 
@@ -22,6 +23,41 @@ class Game
 
     @camera.follow(@player)
     handle_exit_transition
+  end
+
+  def update_player_footsteps args, walking
+    return unless walking
+    return if @last_footstep_at && Kernel.tick_count - @last_footstep_at < FOOTSTEP_INTERVAL_FRAMES
+
+    @last_footstep_at = Kernel.tick_count
+    @footstep_audio_index += 1
+    pitch = FOOTSTEP_PITCH_MIN + rand * (FOOTSTEP_PITCH_MAX - FOOTSTEP_PITCH_MIN)
+    args.audio[:"footstep_#{@footstep_audio_index}"] = {
+      input: FOOTSTEP_SOUND_PATH,
+      gain: FOOTSTEP_GAIN.to_f,
+      pitch: pitch,
+      looping: false
+    }
+  end
+
+  def play_typing_sound args
+    @typing_audio_index += 1
+    pitch = TYPING_PITCH_MIN + rand * (TYPING_PITCH_MAX - TYPING_PITCH_MIN)
+    args.audio[:"typing_#{@typing_audio_index}"] = {
+      input: TYPING_SOUND_PATH,
+      gain: TYPING_GAIN.to_f,
+      pitch: pitch,
+      looping: false
+    }
+  end
+
+  def play_scramble_sound args
+    @scramble_audio_index += 1
+    args.audio[:"scramble_#{@scramble_audio_index}"] = {
+      input: SCRAMBLE_SOUND_PATH,
+      gain: SCRAMBLE_GAIN.to_f,
+      looping: false
+    }
   end
 
   def handle_interaction args

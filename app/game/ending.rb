@@ -7,6 +7,8 @@ class Game
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
     @interaction_scramble_order = nil
+    @interaction_scramble_sound_played = false
+    @interaction_visible_character_count = 0
   end
 
   def start_ending_sequence
@@ -20,11 +22,13 @@ class Game
   end
 
   def update_ending_sequence args
-    update_interaction_text(true)
+    update_interaction_text(args, true)
     interactables.each { |interactable| interactable.update(args) }
     @player.stop! unless @ending_phase == :player_walks
     advance_ending_phase if ending_phase_complete?
+    update_final_text_typing_sound(args)
     update_ending_player_walk if @ending_phase == :player_walks
+    update_player_footsteps(args, @ending_phase == :player_walks)
     @camera.follow(@player) if @ending_phase == :player_walks
   end
 
@@ -64,6 +68,7 @@ class Game
   def set_ending_phase phase
     @ending_phase = phase
     @ending_phase_started_at = Kernel.tick_count
+    @ending_final_text_visible_character_count = 0 if phase == :final_text_fade_in
   end
 
   def ending_phase_complete?
@@ -131,13 +136,38 @@ class Game
     interactables.find { |interactable| interactable.is_a?(FinalDoor) }
   end
 
-  def update_interaction_text hold_final_sacrifice = false
+  def update_interaction_text args, hold_final_sacrifice = false
     return unless @interaction_text
 
-    if visible_interaction_text.length == @interaction_text.length
+    visible_character_count = visible_interaction_text.length
+    play_typing_sound(args) if visible_character_count > (@interaction_visible_character_count || 0)
+    @interaction_visible_character_count = visible_character_count
+
+    if visible_character_count == @interaction_text.length
       @interaction_finished_at ||= Kernel.tick_count
+      update_sacrifice_scramble_sound(args)
       clear_interaction_text if !hold_final_sacrifice && Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
     end
+  end
+
+  def update_sacrifice_scramble_sound args
+    return unless @interaction_sacrificed_word && @interaction_finished_at
+    return if @interaction_scramble_sound_played
+    return if @interaction_sacrificed_word.length == @interaction_sacrificed_word.count(" ")
+    return if Kernel.tick_count - @interaction_finished_at < SACRIFICE_SCRAMBLE_INTERVAL
+
+    @interaction_scramble_sound_played = true
+    play_scramble_sound(args)
+  end
+
+  def update_final_text_typing_sound args
+    return unless [:final_text_fade_in, :final_text].include?(@ending_phase)
+
+    visible_character_count = final_text_character_count.clamp(0, final_text_lines_length)
+    if visible_character_count > (@ending_final_text_visible_character_count || 0)
+      play_typing_sound(args)
+    end
+    @ending_final_text_visible_character_count = visible_character_count
   end
 
   def clear_interaction_text
@@ -148,6 +178,8 @@ class Game
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
     @interaction_scramble_order = nil
+    @interaction_scramble_sound_played = false
+    @interaction_visible_character_count = 0
   end
 
   def visible_interaction_text

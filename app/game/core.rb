@@ -9,6 +9,17 @@ class Game
   PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
+  FOOTSTEP_SOUND_PATH = "sounds/footstep.wav"
+  FOOTSTEP_INTERVAL_FRAMES = 0.45.seconds
+  FOOTSTEP_GAIN = 0.9
+  FOOTSTEP_PITCH_MIN = 0.85
+  FOOTSTEP_PITCH_MAX = 1.1
+  TYPING_SOUND_PATH = "sounds/typing.wav"
+  TYPING_GAIN = 0.2
+  TYPING_PITCH_MIN = 0.95
+  TYPING_PITCH_MAX = 1.05
+  SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
+  SCRAMBLE_GAIN = 1.0
   ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
@@ -22,7 +33,7 @@ class Game
   ENDING_TITLE_CORRUPT_AFTER_FRAMES = 1.1.seconds
   RESET_HINTS = [
     "A name left behind changes the shape of the maze...",
-    "A name left at the altar dissociates that item from reality..."
+    "A name left at the altar dissociates that item from reality...",
     "Every offering opens something while closing one's mind off from something else...",
     "Forgetting is not failure. It is information...",
     "Something ancient and nameless hunts those trapped here...",
@@ -145,6 +156,8 @@ class Game
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
     @interaction_scramble_order = nil
+    @interaction_scramble_sound_played = false
+    @interaction_visible_character_count = 0
     @mechanic_feedback_text = nil
     @mechanic_feedback_until = nil
     @pointer_gesture = nil
@@ -165,6 +178,10 @@ class Game
     @sacrifice_effects = {}
     @player_light_size_effect = nil
     @bell_ring_pulses = []
+    @last_footstep_at = nil
+    @footstep_audio_index = 0
+    @typing_audio_index = 0
+    @scramble_audio_index = 0
     @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false
     @ending_phase = nil
@@ -173,6 +190,7 @@ class Game
     @ending_player_target = nil
     @ending_title_corruptor = nil
     @ending_title_started_at = nil
+    @ending_final_text_visible_character_count = 0
   end
 
   def build_rooms

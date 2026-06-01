@@ -77,11 +77,12 @@ class Game
     lines = @mechanic_feedback_text.wrapped_lines(76)
     return if lines.empty?
 
+    outputs = args.outputs.primitives
     panel = { x: 286, y: 86, w: 708, h: 24 + lines.length * 24 }
-    args.outputs.sprites << Render.solid(panel, :void, a: 210)
-    args.outputs.borders << panel.merge(**Render.color(:ember), a: 220)
+    outputs << panel.merge(**Render.color(:stone), a: 128, primitive_marker: :solid)
+    outputs << panel.merge(**Render.color(:ember), a: 220, primitive_marker: :border)
     lines.each_with_index do |line, index|
-      args.outputs.labels << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1)
+      outputs << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1).merge(primitive_marker: :label)
     end
   end
 
@@ -117,22 +118,23 @@ class Game
   end
 
   def render_altar args
-    args.outputs.sprites << Render.solid({ x: 0, y: 0, w: Grid.w, h: Grid.h }, :void, a: 150)
-    args.outputs.sprites << Render.solid(ALTAR_PANEL, :stone)
-    args.outputs.borders << ALTAR_PANEL.merge(**Render.color(:brass))
-    args.outputs.labels << Render.label(640, 478, "SACRIFICE A NAME", :ash, size_enum: 2, alignment_enum: 1)
+    outputs = args.outputs.primitives
+    outputs << { x: 0, y: 0, w: Grid.w, h: Grid.h, **Render.color(:void), a: 150, primitive_marker: :solid }
+    outputs << ALTAR_PANEL.merge(**Render.color(:stone), a: 128, primitive_marker: :solid)
+    outputs << ALTAR_PANEL.merge(**Render.color(:brass), primitive_marker: :border)
+    outputs << Render.label(640, 478, "SACRIFICE A NAME", :ash, size_enum: 2, alignment_enum: 1).merge(primitive_marker: :label)
 
     if sacrificeable_words.empty?
-      args.outputs.labels << Render.label(640, 388, "No learned names.", :ash, size_enum: 0, alignment_enum: 1)
-      args.outputs.labels << Render.label(640, 246, "Click away to close.", :ash, size_enum: -1, alignment_enum: 1)
+      outputs << Render.label(640, 388, "No learned names.", :ash, size_enum: 0, alignment_enum: 1).merge(primitive_marker: :label)
+      outputs << Render.label(640, 246, "Click away to close.", :ash, size_enum: -1, alignment_enum: 1).merge(primitive_marker: :label)
       return
     end
 
     sacrificeable_words.each_with_index do |word, index|
       rect = altar_word_rect(index)
-      args.outputs.sprites << Render.solid(rect, :wall)
-      args.outputs.borders << rect.merge(**Render.color(:ember))
-      args.outputs.labels << Render.label(rect[:x] + 18, rect[:y] + 24, word, :ember, size_enum: 0)
+      outputs << rect.merge(**Render.color(:wall), primitive_marker: :solid)
+      outputs << rect.merge(**Render.color(:ember), primitive_marker: :border)
+      outputs << Render.label(rect[:x] + 18, rect[:y] + 24, word, :ember, size_enum: 0).merge(primitive_marker: :label)
     end
   end
 

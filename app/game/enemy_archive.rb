@@ -20,6 +20,7 @@ class Game
         enemy_speed_multiplier(enemy)
       )
       play_nameless_sound(args) if previous_state != :chase && enemy.state == :chase
+      update_enemy_patrol_sound(args, enemy, previous_state)
 
       next unless rects_intersect?(enemy.rect, @player.rect)
 
@@ -34,6 +35,22 @@ class Game
     end
 
     false
+  end
+
+  def update_enemy_patrol_sound args, enemy, previous_state
+    if previous_state == :patrol
+      @enemy_patrol_sound_pending.delete(enemy)
+      return
+    end
+
+    if previous_state == :chase && enemy.state != :chase
+      @enemy_patrol_sound_pending << enemy unless @enemy_patrol_sound_pending.include?(enemy)
+    end
+
+    return unless enemy.state == :patrol
+    return unless @enemy_patrol_sound_pending.delete(enemy)
+
+    play_nameless_sound(args, input: NAMELESS_PATROL_SOUND_PATH)
   end
 
   def current_enemies

@@ -140,7 +140,9 @@ class Game
     return unless @interaction_text
 
     visible_character_count = visible_interaction_text.length
-    play_typing_sound(args) if visible_character_count > (@interaction_visible_character_count || 0)
+    if visible_character_count > (@interaction_visible_character_count || 0) && visible_character_count.odd?
+      play_typing_sound(args)
+    end
     @interaction_visible_character_count = visible_character_count
 
     if visible_character_count == @interaction_text.length
@@ -164,7 +166,7 @@ class Game
     return unless [:final_text_fade_in, :final_text].include?(@ending_phase)
 
     visible_character_count = final_text_character_count.clamp(0, final_text_lines_length)
-    if visible_character_count > (@ending_final_text_visible_character_count || 0)
+    if visible_character_count > (@ending_final_text_visible_character_count || 0) && visible_character_count.odd?
       play_typing_sound(args)
     end
     @ending_final_text_visible_character_count = visible_character_count

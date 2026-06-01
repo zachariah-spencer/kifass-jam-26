@@ -8,7 +8,7 @@ class Game
   WORLD_H = G[82]
   PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
   MESSAGE_DELAY_FRAMES = 3.seconds
-  MESSAGE_CHARACTER_INTERVAL = 0.1.seconds
+  MESSAGE_CHARACTER_INTERVAL = 0.05.seconds
   FOOTSTEP_SOUND_PATH = "sounds/footstep.wav"
   FOOTSTEP_INTERVAL_FRAMES = 0.45.seconds
   FOOTSTEP_GAIN = 0.9
@@ -28,8 +28,10 @@ class Game
     "sounds/nameless_3.wav",
     "sounds/nameless_4.wav"
   ]
+  NAMELESS_PATROL_SOUND_PATH = "sounds/nameless_patrol.wav"
   NAMELESS_GAIN = 1.0
   NAMELESS_PITCH = 1.0
+  NAMELESS_PITCH_SPREAD = 0.2
   NAMELESS_SACRIFICED_BELL_PITCH = 1.75
   ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
@@ -147,6 +149,7 @@ class Game
     @player = Player.new(spawn[:x], spawn[:y])
     @enemies = initial_enemies
     @enemy = @enemies.first
+    @enemy_patrol_sound_pending = []
     @learned_words = []
     @learned_object_ids = []
     @learned_word_sources = {}

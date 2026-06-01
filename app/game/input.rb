@@ -69,14 +69,19 @@ class Game
     }
   end
 
-  def play_nameless_sound args, high_pitch: word_sacrificed?("BELL")
+  def play_nameless_sound args, high_pitch: word_sacrificed?("BELL"), input: nil
     @nameless_audio_index += 1
     args.audio[:"nameless_#{@nameless_audio_index}"] = {
-      input: NAMELESS_SOUND_PATHS[rand(NAMELESS_SOUND_PATHS.length)],
+      input: input || NAMELESS_SOUND_PATHS[rand(NAMELESS_SOUND_PATHS.length)],
       gain: NAMELESS_GAIN.to_f,
-      pitch: high_pitch ? NAMELESS_SACRIFICED_BELL_PITCH : NAMELESS_PITCH,
+      pitch: nameless_pitch(high_pitch),
       looping: false
     }
+  end
+
+  def nameless_pitch high_pitch
+    base_pitch = high_pitch ? NAMELESS_SACRIFICED_BELL_PITCH : NAMELESS_PITCH
+    base_pitch + rand * NAMELESS_PITCH_SPREAD - NAMELESS_PITCH_SPREAD / 2.0
   end
 
   def handle_interaction args

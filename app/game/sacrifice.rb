@@ -128,6 +128,9 @@ class Game
     @mechanic_feedback_text = text
     @mechanic_feedback_started_at = Kernel.tick_count
     @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FRAMES
+    @mechanic_feedback_skip_progress = 0
+    @mechanic_feedback_skip_hold_started_at = nil
+    @mechanic_feedback_skip_hold_start_progress = 0
   end
 
   def trigger_learned_word_effect word, source, previous_player_light_size = nil

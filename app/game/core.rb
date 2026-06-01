@@ -101,6 +101,11 @@ class Game
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES + 2.0.seconds
   MECHANIC_FEEDBACK_FADE_FRAMES = 0.35.seconds
+  MECHANIC_FEEDBACK_SKIP_HOLD_FRAMES = 0.75.seconds
+  MECHANIC_FEEDBACK_SKIP_PROGRESS_LERP = 0.25
+  SPAWN_HINT_FADE_FRAMES = 0.35.seconds
+  SPAWN_HINT_HOLD_FRAMES = 2.seconds
+  SPAWN_HINT_TOTAL_FRAMES = SPAWN_HINT_FADE_FRAMES * 2 + SPAWN_HINT_HOLD_FRAMES
   LEARNED_WORD_MESSAGES = {
     "BELL" => BELL_TOOLTIP_TEXT,
     "KEY" => "You hear the clanging of metal gates opening nearby.",
@@ -156,6 +161,7 @@ class Game
     spawn = room.spawn(:default)
     @camera = Camera.new(VIEWPORT_W, VIEWPORT_H, room.world_w, room.world_h)
     @player = Player.new(spawn[:x], spawn[:y])
+    @spawn_hint_started_at = nil
     @enemies = initial_enemies
     @enemy = @enemies.first
     @enemy_patrol_sound_pending = []
@@ -187,6 +193,9 @@ class Game
     @mechanic_feedback_until = nil
     @mechanic_feedback_freeze_started_at = nil
     @mechanic_feedback_frozen_world_tick = nil
+    @mechanic_feedback_skip_progress = 0
+    @mechanic_feedback_skip_hold_started_at = nil
+    @mechanic_feedback_skip_hold_start_progress = 0
     @world_paused_frames = 0
     @post_mechanic_feedback_sfx = []
     @pointer_gesture = nil
@@ -239,8 +248,12 @@ class Game
     false
   end
 
+  def start_spawn_hints
+    @spawn_hint_started_at = Kernel.tick_count
+  end
+
   def mechanic_feedback_freeze_active?
-    mechanic_feedback_active?
+    mechanic_feedback_active? && !!@mechanic_feedback_freeze_started_at
   end
 
   def world_tick_count

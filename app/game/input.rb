@@ -3,7 +3,10 @@ class Game
     return if handle_level_editor_toggle(args)
     return update_level_editor(args) if level_editor_active?
 
-    return if mechanic_feedback_freeze_active?
+    if mechanic_feedback_freeze_active?
+      update_mechanic_feedback_skip(args)
+      return
+    end
     flush_post_mechanic_feedback_sfx(args)
     return update_ending_sequence(args) if ending_sequence_triggered?
     return update_reset_sequence if reset_sequence_active?
@@ -41,6 +44,43 @@ class Game
       pitch: pitch,
       looping: false
     }
+  end
+
+  def update_mechanic_feedback_skip args
+    target_progress = 0
+    if mechanic_feedback_skip_held?(args)
+      unless @mechanic_feedback_skip_hold_started_at
+        @mechanic_feedback_skip_hold_started_at = Kernel.tick_count
+        @mechanic_feedback_skip_hold_start_progress = @mechanic_feedback_skip_progress || 0
+      end
+      elapsed = Kernel.tick_count - @mechanic_feedback_skip_hold_started_at
+      target_progress = @mechanic_feedback_skip_hold_start_progress + elapsed.to_f / MECHANIC_FEEDBACK_SKIP_HOLD_FRAMES
+    else
+      @mechanic_feedback_skip_hold_started_at = nil
+      @mechanic_feedback_skip_hold_start_progress = @mechanic_feedback_skip_progress || 0
+    end
+
+    clamped_target_progress = target_progress.clamp(0, 1)
+    @mechanic_feedback_skip_progress ||= 0
+    @mechanic_feedback_skip_progress = @mechanic_feedback_skip_progress.lerp(clamped_target_progress, MECHANIC_FEEDBACK_SKIP_PROGRESS_LERP)
+    skip_mechanic_feedback_early if clamped_target_progress >= 1
+  end
+
+  def mechanic_feedback_skip_held? args
+    mouse = args.inputs.mouse
+    return true if mouse.down || mouse.held || mouse.key_down.left || mouse.key_held.left
+
+    touches = args.inputs.touch || {}
+    touches.length > 0
+  end
+
+  def skip_mechanic_feedback_early
+    finish_mechanic_feedback_freeze
+    @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FADE_FRAMES
+    @mechanic_feedback_started_at = @mechanic_feedback_until - MECHANIC_FEEDBACK_FRAMES + MECHANIC_FEEDBACK_FADE_FRAMES
+    @mechanic_feedback_skip_progress = 1
+    @mechanic_feedback_skip_hold_started_at = nil
+    @mechanic_feedback_skip_hold_start_progress = 0
   end
 
   def play_typing_sound args

@@ -3,6 +3,7 @@ class Game
     return render_ending_ui(args) if ending_sequence_triggered? && @ending_phase != :sacrifice_message
 
     # args.outputs.labels << Render.label(36, 694, "PLAY SCENE", :ash, size_enum: 3)
+    render_spawn_hints(args)
     render_learned_words(args)
     if @interaction_text
       args.outputs.labels << Render.label(640, 664, visible_interaction_text, :ash, size_enum: 1, alignment_enum: 1)
@@ -12,6 +13,42 @@ class Game
     render_archive_off_path_warning(args)
     render_altar(args) if @altar_open
     args.outputs.labels << Render.label(36, 40, "Press R to forget it all...", :ash, size_enum: -1)
+  end
+
+  def render_spawn_hints args
+    alpha = spawn_hint_alpha
+    return if alpha <= 0
+
+    left_text, right_text = spawn_hint_text
+    args.outputs.labels << Render.label(320, 642, left_text, :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+    args.outputs.labels << Render.label(960, 642, right_text, :ash, size_enum: 1, alignment_enum: 1, a: alpha)
+  end
+
+  def spawn_hint_text
+    return ["Tap and Drag to Move", "Tap Objects to Interact"] if touch_platform?
+
+    ["WASD to Move", "Click Objects to Interact"]
+  end
+
+  def spawn_hint_alpha
+    return 0 unless @spawn_hint_started_at
+
+    elapsed = Kernel.tick_count - @spawn_hint_started_at
+    if elapsed >= SPAWN_HINT_TOTAL_FRAMES
+      @spawn_hint_started_at = nil
+      return 0
+    end
+
+    fade_out_started_at = SPAWN_HINT_FADE_FRAMES + SPAWN_HINT_HOLD_FRAMES
+    scale = if elapsed < SPAWN_HINT_FADE_FRAMES
+              elapsed.to_f / SPAWN_HINT_FADE_FRAMES
+            elsif elapsed < fade_out_started_at
+              1
+            else
+              1 - (elapsed - fade_out_started_at).to_f / SPAWN_HINT_FADE_FRAMES
+            end
+
+    (255 * scale.clamp(0, 1)).to_i
   end
 
   def render_archive_off_path_warning args
@@ -80,7 +117,7 @@ class Game
 
     outputs = args.outputs.primitives
     alpha_scale = mechanic_feedback_alpha_scale
-    panel = { x: 286, y: (Grid.h - (24 + lines.length * 24)) / 2, w: 708, h: 24 + lines.length * 24 }
+    panel = { x: 286, y: (Grid.h - (44 + lines.length * 24)) / 2, w: 708, h: 44 + lines.length * 24 }
     outputs << {
       x: 0,
       y: 0,
@@ -94,6 +131,14 @@ class Game
     lines.each_with_index do |line, index|
       outputs << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1, a: (255 * alpha_scale).to_i).merge(primitive_marker: :label)
     end
+    render_mechanic_feedback_skip_bar(outputs, panel, alpha_scale)
+  end
+
+  def render_mechanic_feedback_skip_bar outputs, panel, alpha_scale
+    progress = (@mechanic_feedback_skip_progress || 0).clamp(0, 1)
+    bar = { x: panel[:x] + 24, y: panel[:y] + 14, w: panel[:w] - 48, h: 4 }
+    outputs << bar.merge(**Render.color(:stone), a: (180 * alpha_scale).to_i, primitive_marker: :solid)
+    outputs << bar.merge(w: bar[:w] * progress, **Render.color(:ash), a: (235 * alpha_scale).to_i, primitive_marker: :solid)
   end
 
   def mechanic_feedback_alpha_scale

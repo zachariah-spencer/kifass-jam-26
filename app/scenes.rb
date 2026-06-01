@@ -572,6 +572,10 @@ class PlayScene < BaseScene
     :play
   end
 
+  def activate!
+    @game.start_spawn_hints
+  end
+
   def tick
     if @game.ending_complete?
       args.state.next_scene = :title

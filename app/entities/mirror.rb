@@ -1,9 +1,22 @@
 class Mirror < Interactable
   W = WorldScale.value(54)
   H = WorldScale.value(74)
+  SPRITE_PATH = "sprites/mirror.png"
+  FRAME_COUNT = 4
+  FRAME_COLUMNS = 2
+  FRAME_SIZE = 1024
+  FRAME_HOLD = 6
 
   def initialize x, y, id
     super(x, y, W, H, id: id, word: "MIRROR")
+    @sacrificed_at = nil
+  end
+
+  def sacrifice!
+    return if sacrificed?
+
+    super
+    @sacrificed_at = Kernel.tick_count
   end
 
   def interaction_text
@@ -16,16 +29,28 @@ class Mirror < Interactable
 
   def render args, outputs = args.outputs, camera = nil
     mirror_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << Render.solid(mirror_rect, sacrificed? ? :wall : :void, a: 225)
-    outputs.borders << mirror_rect.merge(**Render.color(sacrificed? ? :ash : :brass), a: 220)
+    outputs.sprites << mirror_sprite(mirror_rect)
+  end
 
-    glass = {
-      x: mirror_rect[:x] + 10,
-      y: mirror_rect[:y] + 10,
-      w: mirror_rect[:w] - 20,
-      h: mirror_rect[:h] - 20
-    }
-    outputs.sprites << Render.solid(glass, sacrificed? ? :stone : :ash, a: sacrificed? ? 80 : 58)
-    outputs.borders << glass.merge(**Render.color(:ash), a: sacrificed? ? 70 : 140)
+  def mirror_sprite mirror_rect
+    frame_index = sacrificed_frame_index
+
+    mirror_rect.merge(
+      path: SPRITE_PATH,
+      tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
+      tile_y: frame_index.idiv(FRAME_COLUMNS) * FRAME_SIZE,
+      tile_w: FRAME_SIZE,
+      tile_h: FRAME_SIZE
+    )
+  end
+
+  def sacrificed_frame_index
+    return 0 unless sacrificed?
+
+    @sacrificed_at.frame_index(
+      count: FRAME_COUNT,
+      hold_for: FRAME_HOLD,
+      loop: false
+    ) || FRAME_COUNT - 1
   end
 end

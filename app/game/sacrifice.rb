@@ -52,6 +52,7 @@ class Game
     if player_name_word?(word)
       @camera.shake!
       @sacrificed_words << PLAYER_NAME_WORD unless @sacrificed_words.include?(PLAYER_NAME_WORD)
+      seed_forgotten_word_corruptor(PLAYER_NAME_WORD)
       @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
       @active_altar.sacrifice! if @active_altar
       close_altar
@@ -63,12 +64,14 @@ class Game
     trigger_player_light_size_effect(@player.light_size, SACRIFICED_LAMP_LIGHT_SIZE, SACRIFICED_LAMP_EFFECT_FRAMES) if word == "LAMP"
     @player.light_size = SACRIFICED_LAMP_LIGHT_SIZE if word == "LAMP"
     start_key_gate_animation(:close) if word == "KEY"
+    trigger_sacrifice_effect(word)
 
     @learned_words.delete(word)
     @sacrificed_words << word unless @sacrificed_words.include?(word)
+    seed_forgotten_word_corruptor(word)
     if word == "BELL"
       @enemies.each(&:clear_stun!)
-      ensure_bell_sacrifice_enemy!
+      handle_bell_sacrifice_enemies!
     elsif word == "KEY"
       ensure_sanctum_enemy!
     end
@@ -105,6 +108,28 @@ class Game
       learned_player_light_size: word == "LAMP" ? LEARNED_LAMP_LIGHT_SIZE : @player.light_size
     }
     add_bell_ring_pulse(source.center) if word == "BELL"
+  end
+
+  def trigger_sacrifice_effect word
+    @sacrifice_effects[word] = { started_at: Kernel.tick_count }
+  end
+
+  def seed_forgotten_word_corruptor word
+    @forgotten_word_corruptors ||= {}
+    @forgotten_word_corruptors[word] ||= TextCorruptor.new(word)
+  end
+
+  def sacrifice_effect word, duration
+    effect = @sacrifice_effects[word]
+    return nil unless effect
+
+    progress = effect_progress(effect[:started_at], duration)
+    unless progress
+      @sacrifice_effects.delete(word)
+      return nil
+    end
+
+    effect.merge(progress: progress)
   end
 
   def add_bell_ring_pulse center

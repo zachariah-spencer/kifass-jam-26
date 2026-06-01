@@ -86,16 +86,34 @@ class Game
   end
 
   def render_learned_words args
-    args.outputs.labels << Render.label(1080, 694, "LEARNED", :ash, size_enum: 1)
+    outputs = args.outputs.primitives
+    outputs << Render.label(1080, 694, "LEARNED", :ash, size_enum: 1)
 
+    learned_rows = @learned_words.empty? ? 1 : @learned_words.length
     if @learned_words.empty?
-      args.outputs.labels << Render.label(1080, 664, "none", :ash, size_enum: -1)
-      return
+      outputs << Render.label(1080, 664, "none", :ash, size_enum: -1)
+    else
+      @learned_words.each_with_index do |word, index|
+        outputs << Render.label(1080, 664 - index * 24, word, :ember, size_enum: 0)
+      end
     end
 
-    @learned_words.each_with_index do |word, index|
-      args.outputs.labels << Render.label(1080, 664 - index * 24, word, :ember, size_enum: 0)
+    render_forgotten_words(outputs, 664 - learned_rows * 24 - 12)
+  end
+
+  def render_forgotten_words outputs, y
+    return if @sacrificed_words.empty?
+
+    outputs << Render.label(1080, y, "FORGOTTEN", :ash, size_enum: 0, a: 135)
+    @sacrificed_words.each_with_index do |word, index|
+      outputs << Render.label(1080, y - 24 - index * 20, forgotten_word_text(word), :brass, size_enum: -1, a: 125)
     end
+  end
+
+  def forgotten_word_text word
+    @forgotten_word_corruptors ||= {}
+    @forgotten_word_corruptors[word] ||= TextCorruptor.new(word)
+    @forgotten_word_corruptors[word].text(Kernel.tick_count)
   end
 
   def render_altar args

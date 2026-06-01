@@ -280,8 +280,8 @@
       "objects": [
         {
           "type": "mirror",
-          "col": 17,
-          "row": 49,
+          "col": 21,
+          "row": 37,
           "id": "archive_mirror"
         },
         {
@@ -348,21 +348,33 @@
         },
         {
           "col": 78,
-          "row": 34,
+          "row": 13,
           "w_cols": 2,
-          "h_rows": 13
-        },
-        {
-          "col": 69,
-          "row": 52,
-          "w_cols": 2,
-          "h_rows": 10
+          "h_rows": 4
         },
         {
           "col": 78,
-          "row": 56,
+          "row": 29,
           "w_cols": 2,
-          "h_rows": 17
+          "h_rows": 21
+        },
+        {
+          "col": 69,
+          "row": 48,
+          "w_cols": 9,
+          "h_rows": 2
+        },
+        {
+          "col": 69,
+          "row": 50,
+          "w_cols": 2,
+          "h_rows": 12
+        },
+        {
+          "col": 78,
+          "row": 53,
+          "w_cols": 2,
+          "h_rows": 20
         },
         {
           "col": 69,

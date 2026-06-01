@@ -20,12 +20,29 @@ class Game
   TYPING_GAIN = 0.2
   TYPING_PITCH_MIN = 0.95
   TYPING_PITCH_MAX = 1.05
+  BUTTON_CLICK_GAIN = 0.5
+  BUTTON_CLICK_PITCH_MIN = 1.45
+  BUTTON_CLICK_PITCH_MAX = 1.7
   SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
   SCRAMBLE_GAIN = 1.0
   NOTIFICATION_SOUND_PATH = "sounds/notification.wav"
   NOTIFICATION_GAIN = 0.75
   ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
   ALTAR_CRASHING_GAIN = 50.0
+  WORD_EVENT_SOUND_GAIN = 1.0
+  LAMP_WORD_EVENT_SOUND_GAIN = 5.0
+  LEARNED_WORD_SOUND_PATHS = {
+    "BELL" => "sounds/bell_use.wav",
+    "KEY" => "sounds/gate_open.wav",
+    "MIRROR" => "sounds/mirror_learned.wav",
+    "LAMP" => "sounds/lamp_learned.wav"
+  }
+  SACRIFICED_WORD_SOUND_PATHS = {
+    "BELL" => "sounds/bell_sacrificed.wav",
+    "KEY" => "sounds/gate_close.wav",
+    "MIRROR" => "sounds/mirror_sacrificed.wav",
+    "LAMP" => "sounds/lamp_sacrifice.wav"
+  }
   NAMELESS_SOUND_PATHS = [
     "sounds/nameless_1.wav",
     "sounds/nameless_2.wav",
@@ -97,6 +114,7 @@ class Game
   LEARNED_MIRROR_EFFECT_SETTLE_FRAMES = 1.0.seconds
   MIRROR_SAFE_PATH_SURGE_GLOW_SIZE = 92
   MIRROR_SAFE_PATH_SURGE_GLINT_SIZE = 18
+  MIRROR_SACRIFICE_CELL_BUCKET_SIZE = 2
   BELL_RING_PULSE_FRAMES = 1.0.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
   MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES + 2.0.seconds
@@ -104,7 +122,7 @@ class Game
   MECHANIC_FEEDBACK_SKIP_HOLD_FRAMES = 0.75.seconds
   MECHANIC_FEEDBACK_SKIP_PROGRESS_LERP = 0.25
   SPAWN_HINT_FADE_FRAMES = 0.35.seconds
-  SPAWN_HINT_HOLD_FRAMES = 2.seconds
+  SPAWN_HINT_HOLD_FRAMES = 5.seconds
   SPAWN_HINT_TOTAL_FRAMES = SPAWN_HINT_FADE_FRAMES * 2 + SPAWN_HINT_HOLD_FRAMES
   LEARNED_WORD_MESSAGES = {
     "BELL" => BELL_TOOLTIP_TEXT,
@@ -207,6 +225,8 @@ class Game
     @env_tile_cache = {}
     @archive_safe_path_cells = nil
     @sacrificed_mirror_safe_path_cells = nil
+    @sacrificed_mirror_retained_cell_lookup = nil
+    @sacrificed_mirror_removed_cell_cutoffs = nil
     @archive_off_path_started_at = nil
     @key_gate_states = {}
     reset_key_gate_states
@@ -219,9 +239,11 @@ class Game
     @last_footstep_at = nil
     @footstep_audio_index = 0
     @typing_audio_index = 0
+    @button_click_audio_index = 0
     @scramble_audio_index = 0
     @notification_audio_index = 0
     @altar_crashing_audio_index = 0
+    @word_event_audio_index = 0
     @nameless_audio_index = 0
     @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false

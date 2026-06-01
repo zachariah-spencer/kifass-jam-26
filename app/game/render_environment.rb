@@ -328,12 +328,47 @@ class Game
     @sacrificed_mirror_safe_path_cells ||= begin
       cells = archive_safe_path_cells
       keep_count = (cells.length * 0.5).ceil
-      cells.sort_by { |col, row| sacrificed_mirror_cell_seed(col, row) }.first(keep_count)
+      sacrificed_mirror_stratified_cell_order(cells).first(keep_count)
     end
   end
 
   def sacrificed_mirror_cell_seed col, row
     ((col * 73_856_093) ^ (row * 19_349_663) ^ 0x4d1_220).abs
+  end
+
+  def sacrificed_mirror_stratified_cell_order cells = archive_safe_path_cells
+    bucket_size = MIRROR_SACRIFICE_CELL_BUCKET_SIZE
+    buckets = cells.group_by { |col, row| [col.idiv(bucket_size), row.idiv(bucket_size)] }
+    bucket_cells = buckets.values.map { |bucket| bucket.sort_by { |col, row| sacrificed_mirror_cell_seed(col, row) } }
+    max_bucket_size = bucket_cells.map(&:length).max || 0
+
+    bucket_cells = bucket_cells.sort_by do |bucket|
+      col, row = bucket.first
+      sacrificed_mirror_cell_seed(col.idiv(bucket_size), row.idiv(bucket_size))
+    end
+
+    (0...max_bucket_size).flat_map do |index|
+      bucket_cells.filter_map { |bucket| bucket[index] }
+    end
+  end
+
+  def sacrificed_mirror_retained_cell_lookup
+    @sacrificed_mirror_retained_cell_lookup ||= sacrificed_mirror_safe_path_cells.each_with_object({}) do |cell, lookup|
+      lookup[cell] = true
+    end
+  end
+
+  def sacrificed_mirror_removed_cell_cutoffs
+    @sacrificed_mirror_removed_cell_cutoffs ||= begin
+      cells = archive_safe_path_cells
+      keep_count = (cells.length * 0.5).ceil
+      removed_cells = sacrificed_mirror_stratified_cell_order(cells).drop(keep_count)
+      removed_count = removed_cells.length
+
+      removed_cells.each_with_index.each_with_object({}) do |(cell, index), cutoffs|
+        cutoffs[cell] = (removed_count - index).to_f / (removed_count + 1)
+      end
+    end
   end
 
   def render_mirror_sacrifice_flicker outputs, effect
@@ -343,6 +378,8 @@ class Game
     visible = env_visible_rect(ENV_TILE_SIZE)
     transform = env_render_transform
     layer = cached_env_tile_cells(:archive_safe_paths) { archive_safe_path_cells }
+    retained_cells = sacrificed_mirror_retained_cell_lookup
+    removed_cutoffs = sacrificed_mirror_removed_cell_cutoffs
 
     env_layer_render_cells(layer).each do |cell|
       next unless env_rect_visible?(cell, visible)
@@ -350,8 +387,9 @@ class Game
       col = (cell[:x] / ENV_TILE_SIZE).floor
       row = (cell[:y] / ENV_TILE_SIZE).floor
       seed = sacrificed_mirror_cell_seed(col, row)
-      cutoff = (seed % 1000) / 1000.0
-      next unless cutoff > progress || (seed + tick_gate) % 5 == 0
+      cell_key = [col, row]
+      cutoff = removed_cutoffs[cell_key]
+      next unless retained_cells[cell_key] || (cutoff && cutoff > progress) || (seed + tick_gate) % 5 == 0
 
       outputs.sprites << {
         x: (cell[:x] - transform[:x]) * transform[:zoom] + transform[:shake_x],

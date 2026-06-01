@@ -13,6 +13,7 @@ class Game
       start_key_gate_animation(:open) if interactable.word == "KEY"
       @player.light_size = LEARNED_LAMP_LIGHT_SIZE if interactable.word == "LAMP"
       trigger_learned_word_effect(interactable.word, interactable, previous_player_light_size)
+      defer_post_mechanic_feedback_sfx(:word_event, word: interactable.word, event: :learned)
       show_mechanic_feedback(LEARNED_WORD_MESSAGES[interactable.word], args)
     end
     @learned_object_ids << interactable.id
@@ -38,6 +39,7 @@ class Game
     word = altar_word_at(click)
 
     if word
+      play_button_click_sound(args)
       sacrifice_word(args, word)
     else
       close_altar
@@ -65,6 +67,7 @@ class Game
     end
 
     trigger_player_light_size_effect(@player.light_size, SACRIFICED_LAMP_LIGHT_SIZE, SACRIFICED_LAMP_EFFECT_FRAMES) if word == "LAMP"
+    defer_post_mechanic_feedback_sfx(:word_event, word: word, event: :sacrificed)
     defer_post_mechanic_feedback_sfx(:altar_crashing)
     @player.light_size = SACRIFICED_LAMP_LIGHT_SIZE if word == "LAMP"
     start_key_gate_animation(:close) if word == "KEY"
@@ -113,6 +116,8 @@ class Game
       case sfx[:name]
       when :altar_crashing
         play_altar_crashing_sound(args)
+      when :word_event
+        play_word_event_sound(args, sfx[:options][:word], sfx[:options][:event])
       when :nameless
         play_nameless_sound(args, **sfx[:options])
       end

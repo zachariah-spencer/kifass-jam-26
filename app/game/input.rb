@@ -94,6 +94,17 @@ class Game
     }
   end
 
+  def play_button_click_sound args
+    @button_click_audio_index += 1
+    pitch = BUTTON_CLICK_PITCH_MIN + rand * (BUTTON_CLICK_PITCH_MAX - BUTTON_CLICK_PITCH_MIN)
+    args.audio[:"button_click_#{@button_click_audio_index}"] = {
+      input: TYPING_SOUND_PATH,
+      gain: BUTTON_CLICK_GAIN.to_f,
+      pitch: pitch,
+      looping: false
+    }
+  end
+
   def play_scramble_sound args
     @scramble_audio_index += 1
     args.audio[:"scramble_#{@scramble_audio_index}"] = {
@@ -119,6 +130,23 @@ class Game
       gain: ALTAR_CRASHING_GAIN.to_f,
       looping: false
     }
+  end
+
+  def play_word_event_sound args, word, event
+    sound_paths = event == :sacrificed ? SACRIFICED_WORD_SOUND_PATHS : LEARNED_WORD_SOUND_PATHS
+    sound_path = sound_paths[word]
+    return unless sound_path
+
+    @word_event_audio_index += 1
+    args.audio[:"word_event_#{@word_event_audio_index}"] = {
+      input: sound_path,
+      gain: word_event_sound_gain(word).to_f,
+      looping: false
+    }
+  end
+
+  def word_event_sound_gain word
+    word == "LAMP" ? LAMP_WORD_EVENT_SOUND_GAIN : WORD_EVENT_SOUND_GAIN
   end
 
   def play_nameless_sound args, high_pitch: word_sacrificed?("BELL"), input: nil

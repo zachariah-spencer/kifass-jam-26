@@ -41,6 +41,7 @@ class TitleScene < BaseScene
     return unless accepts_input?
 
     if args.inputs.keyboard.key_down.e || args.inputs.keyboard.key_down.enter || args.inputs.mouse.click
+      @game.play_button_click_sound(args)
       @game.restart
       args.state.next_scene = :name_entry
     end
@@ -205,6 +206,7 @@ class NameEntryScene < BaseScene
     key = key_at(click)
     return unless key
 
+    @game.play_button_click_sound(args)
     @pressed_key_until[key[:value]] = Kernel.tick_count + KEY_PRESS_FEEDBACK_FRAMES
 
     case key[:value]

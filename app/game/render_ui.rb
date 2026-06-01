@@ -124,7 +124,7 @@ class Game
       w: Grid.w,
       h: Grid.h,
       **Render.color(:stone),
-      a: (128 * alpha_scale).to_i,
+      a: (200 * alpha_scale).to_i,
       primitive_marker: :solid
     }
     outputs << panel.merge(**Render.color(:ember), a: (220 * alpha_scale).to_i, primitive_marker: :border)

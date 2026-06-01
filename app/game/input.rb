@@ -60,6 +60,15 @@ class Game
     }
   end
 
+  def play_notification_sound args
+    @notification_audio_index += 1
+    args.audio[:"notification_#{@notification_audio_index}"] = {
+      input: NOTIFICATION_SOUND_PATH,
+      gain: NOTIFICATION_GAIN.to_f,
+      looping: false
+    }
+  end
+
   def play_altar_crashing_sound args
     @altar_crashing_audio_index += 1
     args.audio[:"altar_crashing_#{@altar_crashing_audio_index}"] = {
@@ -94,7 +103,7 @@ class Game
       world_click = @camera.world_point(candidate_tap)
       interactable = nearby_interactables.find { |candidate| candidate.contains_point?(world_click) }
       if interactable
-        set_interaction_text(interactable.interact(self))
+        set_interaction_text(interactable.interact(self, args))
         return
       end
     end

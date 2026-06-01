@@ -20,6 +20,8 @@ class Game
   TYPING_PITCH_MAX = 1.05
   SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
   SCRAMBLE_GAIN = 1.0
+  NOTIFICATION_SOUND_PATH = "sounds/notification.wav"
+  NOTIFICATION_GAIN = 1.0
   ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
   ALTAR_CRASHING_GAIN = 50.0
   NAMELESS_SOUND_PATHS = [
@@ -196,6 +198,7 @@ class Game
     @footstep_audio_index = 0
     @typing_audio_index = 0
     @scramble_audio_index = 0
+    @notification_audio_index = 0
     @altar_crashing_audio_index = 0
     @nameless_audio_index = 0
     @ending_monsters_fade_started_at = nil

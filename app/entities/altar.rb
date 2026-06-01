@@ -20,7 +20,7 @@ class Altar < Interactable
     @sacrificed_at = Kernel.tick_count
   end
 
-  def interact game
+  def interact game, args = nil
     return "The altar is spent." if sacrificed?
 
     game.open_altar(self)

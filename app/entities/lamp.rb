@@ -17,11 +17,11 @@ class Lamp < Interactable
     @sacrificed_at = nil
   end
 
-  def sacrifice!
+  def sacrifice! tick = Kernel.tick_count
     return if sacrificed?
 
     super
-    @sacrificed_at = Kernel.tick_count
+    @sacrificed_at = tick
   end
 
   def interaction_text
@@ -32,45 +32,45 @@ class Lamp < Interactable
     "You struggle to navigate the space but cannot recall why...."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     lamp_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << lamp_rect.merge(lamp_sprite)
+    outputs.sprites << lamp_rect.merge(lamp_sprite(tick))
   end
 
-  def render_light args, outputs = args.outputs, camera = nil
+  def render_light args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     light_center = camera ? camera.screen_point(center) : center
-    light_size = lamp_light_size
+    light_size = lamp_light_size(tick)
     outputs.sprites << light_center.merge(
       path: "sprites/mask.png",
       w: light_size,
       h: light_size,
       anchor_x: 0.5,
       anchor_y: 0.5,
-      a: lamp_light_alpha,
+      a: lamp_light_alpha(tick),
       blendmode: Render::HOLE_PUNCH_BLENDMODE
     )
   end
 
-  def lamp_light_size
-    return oscillating_light_size(LIGHT_SIZE, LIGHT_OSCILLATION_AMOUNT, @x + @y) unless sacrificed?
+  def lamp_light_size tick = Kernel.tick_count
+    return oscillating_light_size(LIGHT_SIZE, LIGHT_OSCILLATION_AMOUNT, @x + @y, tick) unless sacrificed?
 
-    burn_progress = sacrificed_burnout_progress
+    burn_progress = sacrificed_burnout_progress(tick)
     return SACRIFICED_LIGHT_SIZE unless burn_progress
 
     LIGHT_SIZE.lerp(SACRIFICED_LIGHT_SIZE, burn_progress)
   end
 
-  def lamp_light_alpha
+  def lamp_light_alpha tick = Kernel.tick_count
     return 255 unless sacrificed?
 
-    burn_progress = sacrificed_burnout_progress
+    burn_progress = sacrificed_burnout_progress(tick)
     return SACRIFICED_LIGHT_ALPHA unless burn_progress
 
     255.lerp(SACRIFICED_LIGHT_ALPHA, burn_progress).to_i
   end
 
-  def lamp_sprite
-    frame_index = lamp_frame_index
+  def lamp_sprite tick = Kernel.tick_count
+    frame_index = lamp_frame_index(tick)
 
     {
       path: sacrificed? ? BURNT_OUT_SPRITE_PATH : SPRITE_PATH,
@@ -81,20 +81,17 @@ class Lamp < Interactable
     }
   end
 
-  def lamp_frame_index
-    return (Kernel.tick_count + @animation_offset).idiv(FRAME_HOLD) % FRAME_COUNT unless sacrificed?
+  def lamp_frame_index tick = Kernel.tick_count
+    return (tick + @animation_offset).idiv(FRAME_HOLD) % FRAME_COUNT unless sacrificed?
 
-    @sacrificed_at.frame_index(
-      count: FRAME_COUNT,
-      hold_for: FRAME_HOLD,
-      loop: false
-    ) || FRAME_COUNT - 1
+    frame_index = (tick - @sacrificed_at).idiv(FRAME_HOLD)
+    frame_index.clamp(0, FRAME_COUNT - 1)
   end
 
-  def sacrificed_burnout_progress
+  def sacrificed_burnout_progress tick = Kernel.tick_count
     return nil unless @sacrificed_at
 
-    progress = (Kernel.tick_count - @sacrificed_at).to_f / Game::SACRIFICE_LAMP_GUTTER_FRAMES
+    progress = (tick - @sacrificed_at).to_f / Game::SACRIFICE_LAMP_GUTTER_FRAMES
     return nil if progress >= 1.0
 
     progress.clamp(0, 1)

@@ -22,10 +22,11 @@ class Game
 
   def render_bell_cooldown_indicator args
     progress = bell_cooldown_progress
-    pulse_active = @bell_failed_pulse_until && Kernel.tick_count < @bell_failed_pulse_until
+    tick = world_tick_count
+    pulse_active = @bell_failed_pulse_until && tick < @bell_failed_pulse_until
     return if progress <= 0 && !pulse_active
 
-    center = @camera.screen_point(@player.center)
+    center = @camera.with_render_tick(tick) { @camera.screen_point(@player.center) }
     cx = center[:x]
     cy = center[:y] + 62
     pulse_scale = bell_failed_pulse_scale
@@ -56,7 +57,7 @@ class Game
   def bell_failed_pulse_scale
     return 0 unless @bell_failed_pulse_until
 
-    remaining = @bell_failed_pulse_until - Kernel.tick_count
+    remaining = @bell_failed_pulse_until - world_tick_count
     return 0 if remaining <= 0
 
     elapsed = BELL_FAILED_PULSE_FRAMES - remaining
@@ -80,7 +81,15 @@ class Game
     outputs = args.outputs.primitives
     alpha_scale = mechanic_feedback_alpha_scale
     panel = { x: 286, y: (Grid.h - (24 + lines.length * 24)) / 2, w: 708, h: 24 + lines.length * 24 }
-    outputs << panel.merge(**Render.color(:stone), a: (128 * alpha_scale).to_i, primitive_marker: :solid)
+    outputs << {
+      x: 0,
+      y: 0,
+      w: Grid.w,
+      h: Grid.h,
+      **Render.color(:stone),
+      a: (128 * alpha_scale).to_i,
+      primitive_marker: :solid
+    }
     outputs << panel.merge(**Render.color(:ember), a: (220 * alpha_scale).to_i, primitive_marker: :border)
     lines.each_with_index do |line, index|
       outputs << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1, a: (255 * alpha_scale).to_i).merge(primitive_marker: :label)
@@ -129,7 +138,7 @@ class Game
   def forgotten_word_text word
     @forgotten_word_corruptors ||= {}
     @forgotten_word_corruptors[word] ||= TextCorruptor.new(word)
-    @forgotten_word_corruptors[word].text(Kernel.tick_count)
+    @forgotten_word_corruptors[word].text(world_tick_count)
   end
 
   def render_altar args

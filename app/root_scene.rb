@@ -97,6 +97,12 @@ class RootScene
 
   def update_music
     if @game.final_sacrifice_music_stopped?
+      if returning_to_title_after_ending?
+        stop_chase_music
+        update_ending_return_music
+        return
+      end
+
       stop_music
       stop_chase_music
       return
@@ -111,6 +117,49 @@ class RootScene
     crossfade_music(desired_input) if args.state.current_music_input != desired_input
     update_music_crossfade
     update_chase_music
+  end
+
+  def returning_to_title_after_ending?
+    return false unless @game.ending_complete?
+
+    args.state.scene == :title ||
+      args.state.next_scene == :title ||
+      args.state.scene_transition&.[](:target_scene) == :title
+  end
+
+  def update_ending_return_music
+    start_returning_menu_music unless active_music&.input == MENU_MUSIC_PATH
+    update_music_crossfade
+    update_ending_escaped_music_fade_out
+  end
+
+  def start_returning_menu_music
+    args.state.active_music_key ||= MUSIC_KEYS.first
+    args.audio[args.state.active_music_key] = {
+      input: MENU_MUSIC_PATH,
+      looping: true,
+      gain: 0.0
+    }
+    args.state.current_music_input = MENU_MUSIC_PATH
+    args.state.previous_music_key = nil
+    args.state.music_crossfade_started_at = Kernel.tick_count
+  end
+
+  def update_ending_escaped_music_fade_out
+    music = args.audio[Game::ENDING_ESCAPED_MUSIC_KEY]
+    return unless music
+
+    args.state.ending_escaped_music_fade_out_started_at ||= Kernel.tick_count
+    args.state.ending_escaped_music_fade_out_from_gain ||= music.gain || 0.0
+    progress = ((Kernel.tick_count - args.state.ending_escaped_music_fade_out_started_at).to_f / MUSIC_CROSSFADE_FRAMES).clamp(0.0, 1.0)
+
+    from_gain = args.state.ending_escaped_music_fade_out_from_gain || 0.0
+    music.gain = (from_gain * (1.0 - progress)).clamp(0.0, from_gain)
+    return if progress < 1.0
+
+    args.audio.delete(Game::ENDING_ESCAPED_MUSIC_KEY)
+    args.state.ending_escaped_music_fade_out_started_at = nil
+    args.state.ending_escaped_music_fade_out_from_gain = nil
   end
 
   def start_music input

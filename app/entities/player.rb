@@ -95,14 +95,14 @@ class Player
     @dy = 0
   end
 
-  def force_run_animation!
+  def force_run_animation! tick = Kernel.tick_count
     @animation_override = :run
-    @run_started_at = Kernel.tick_count
+    @run_started_at = tick
   end
 
-  def force_idle_animation!
+  def force_idle_animation! tick = Kernel.tick_count
     @animation_override = :idle
-    @idle_started_at = Kernel.tick_count
+    @idle_started_at = tick
   end
 
   def clear_animation_override!
@@ -117,23 +117,19 @@ class Player
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
 
-  def render args, outputs = args.outputs, camera = nil, alpha = 255
+  def render args, outputs = args.outputs, camera = nil, alpha = 255, tick = Kernel.tick_count
     player_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << player_rect.merge(player_sprite).merge(a: alpha)
+    outputs.sprites << player_rect.merge(player_sprite(tick)).merge(a: alpha)
   end
 
-  def player_sprite
+  def player_sprite tick = Kernel.tick_count
     running = @animation_override == :run || (!@animation_override && moving?)
-    running ? animation_sprite(RUN_SPRITE_PATH, RUN_FRAME_COUNT, RUN_FRAME_COLUMNS, RUN_FRAME_SIZE, RUN_FRAME_HOLD, @run_started_at) :
-              animation_sprite(IDLE_SPRITE_PATH, IDLE_FRAME_COUNT, IDLE_FRAME_COLUMNS, IDLE_FRAME_SIZE, IDLE_FRAME_HOLD, @idle_started_at)
+    running ? animation_sprite(RUN_SPRITE_PATH, RUN_FRAME_COUNT, RUN_FRAME_COLUMNS, RUN_FRAME_SIZE, RUN_FRAME_HOLD, @run_started_at, tick) :
+              animation_sprite(IDLE_SPRITE_PATH, IDLE_FRAME_COUNT, IDLE_FRAME_COLUMNS, IDLE_FRAME_SIZE, IDLE_FRAME_HOLD, @idle_started_at, tick)
   end
 
-  def animation_sprite path, frame_count, frame_columns, frame_size, frame_hold, started_at
-    frame_index = started_at.frame_index(
-      count: frame_count,
-      hold_for: frame_hold,
-      repeat: true
-    ) || 0
+  def animation_sprite path, frame_count, frame_columns, frame_size, frame_hold, started_at, tick
+    frame_index = ((tick - started_at).idiv(frame_hold) % frame_count).clamp(0, frame_count - 1)
 
     {
       path: path,
@@ -149,9 +145,9 @@ class Player
     @dx.abs > MOVING_EPSILON || @dy.abs > MOVING_EPSILON
   end
 
-  def render_light args, outputs = args.outputs, camera = nil, light_multiplier = 1.0
+  def render_light args, outputs = args.outputs, camera = nil, light_multiplier = 1.0, tick = Kernel.tick_count
     light_center = camera ? camera.screen_point(center) : center
-    light_size = oscillating_light_size(@light_size, LIGHT_OSCILLATION_AMOUNT) * light_multiplier
+    light_size = oscillating_light_size(@light_size, LIGHT_OSCILLATION_AMOUNT, tick) * light_multiplier
     outputs.sprites << light_center.merge(
       path: "sprites/mask.png",
       w: light_size,
@@ -162,8 +158,8 @@ class Player
     )
   end
 
-  def oscillating_light_size base_size, amount
-    wave = Math.sin(Kernel.tick_count * Math::PI * 2 / LIGHT_OSCILLATION_FRAMES)
+  def oscillating_light_size base_size, amount, tick = Kernel.tick_count
+    wave = Math.sin(tick * Math::PI * 2 / LIGHT_OSCILLATION_FRAMES)
     base_size + wave * amount
   end
 end

@@ -3,6 +3,8 @@ class Game
     return if handle_level_editor_toggle(args)
     return update_level_editor(args) if level_editor_active?
 
+    return if mechanic_feedback_freeze_active?
+    flush_post_mechanic_feedback_sfx(args)
     return update_ending_sequence(args) if ending_sequence_triggered?
     return update_reset_sequence if reset_sequence_active?
 
@@ -27,9 +29,10 @@ class Game
 
   def update_player_footsteps args, walking
     return unless walking
-    return if @last_footstep_at && Kernel.tick_count - @last_footstep_at < FOOTSTEP_INTERVAL_FRAMES
+    tick = world_tick_count
+    return if @last_footstep_at && tick - @last_footstep_at < FOOTSTEP_INTERVAL_FRAMES
 
-    @last_footstep_at = Kernel.tick_count
+    @last_footstep_at = tick
     @footstep_audio_index += 1
     pitch = FOOTSTEP_PITCH_MIN + rand * (FOOTSTEP_PITCH_MAX - FOOTSTEP_PITCH_MIN)
     args.audio[:"footstep_#{@footstep_audio_index}"] = {
@@ -133,7 +136,7 @@ class Game
       @pointer_gesture = {
         start: point_hash(args.inputs.mouse.down),
         current: point_hash(args.inputs.mouse.down),
-        started_at: Kernel.tick_count,
+        started_at: world_tick_count,
         dragged: false
       }
     end
@@ -162,7 +165,7 @@ class Game
       @touch_gestures[touch_id] ||= {
         start: point_hash(touch),
         current: point_hash(touch),
-        started_at: Kernel.tick_count,
+        started_at: world_tick_count,
         dragged: false
       }
 
@@ -198,12 +201,12 @@ class Game
 
   def pointer_tap?
     !@pointer_gesture[:dragged] &&
-      Kernel.tick_count - @pointer_gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
+      world_tick_count - @pointer_gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
   end
 
   def touch_tap? gesture
     !gesture[:dragged] &&
-      Kernel.tick_count - gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
+      world_tick_count - gesture[:started_at] <= POINTER_TAP_MAX_FRAMES
   end
 
   def pointer_movement_vector

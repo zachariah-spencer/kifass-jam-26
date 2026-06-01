@@ -12,11 +12,11 @@ class Mirror < Interactable
     @sacrificed_at = nil
   end
 
-  def sacrifice!
+  def sacrifice! tick = Kernel.tick_count
     return if sacrificed?
 
     super
-    @sacrificed_at = Kernel.tick_count
+    @sacrificed_at = tick
   end
 
   def interaction_text
@@ -27,13 +27,13 @@ class Mirror < Interactable
     "The frame holds only dust-dark glass."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     mirror_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << mirror_sprite(mirror_rect)
+    outputs.sprites << mirror_sprite(mirror_rect, tick)
   end
 
-  def mirror_sprite mirror_rect
-    frame_index = sacrificed_frame_index
+  def mirror_sprite mirror_rect, tick = Kernel.tick_count
+    frame_index = sacrificed_frame_index(tick)
 
     mirror_rect.merge(
       path: SPRITE_PATH,
@@ -44,13 +44,9 @@ class Mirror < Interactable
     )
   end
 
-  def sacrificed_frame_index
+  def sacrificed_frame_index tick = Kernel.tick_count
     return 0 unless sacrificed?
 
-    @sacrificed_at.frame_index(
-      count: FRAME_COUNT,
-      hold_for: FRAME_HOLD,
-      loop: false
-    ) || FRAME_COUNT - 1
+    (tick - @sacrificed_at).idiv(FRAME_HOLD).clamp(0, FRAME_COUNT - 1)
   end
 end

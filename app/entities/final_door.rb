@@ -17,9 +17,9 @@ class FinalDoor < Interactable
     "The door waits for the last name."
   end
 
-  def render args, outputs = args.outputs, camera = nil, open = false
+  def render args, outputs = args.outputs, camera = nil, open = false, tick = Kernel.tick_count
     door_rect = camera ? camera.screen_rect(render_rect) : render_rect
-    frame_index = current_frame_index(open)
+    frame_index = current_frame_index(open, tick)
     outputs.sprites << door_rect.merge(
       path: SPRITE_PATH,
       tile_x: frame_index % FRAME_COLUMNS * FRAME_SIZE,
@@ -38,14 +38,14 @@ class FinalDoor < Interactable
     }
   end
 
-  def current_frame_index open
+  def current_frame_index open, tick = Kernel.tick_count
     unless open
       @opened_at = nil
       return 0
     end
 
-    @opened_at ||= Kernel.tick_count
-    frame_index = (Kernel.tick_count - @opened_at).idiv(FRAME_HOLD)
+    @opened_at ||= tick
+    frame_index = (tick - @opened_at).idiv(FRAME_HOLD)
     frame_index.clamp(0, FRAME_COUNT - 1)
   end
 end

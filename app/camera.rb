@@ -31,7 +31,7 @@ class Camera
   end
 
   def screen_rect rect
-    shake = shake_offset
+    shake = shake_offset(@render_tick || Kernel.tick_count)
     rect.merge(
       x: (rect[:x] - @x) * ZOOM + shake[:x],
       y: (rect[:y] - @y) * ZOOM + shake[:y],
@@ -41,12 +41,20 @@ class Camera
   end
 
   def screen_point point
-    shake = shake_offset
+    shake = shake_offset(@render_tick || Kernel.tick_count)
     { x: (coord(point, :x) - @x) * ZOOM + shake[:x], y: (coord(point, :y) - @y) * ZOOM + shake[:y] }
   end
 
-  def shake!
-    @shake_started_at = Kernel.tick_count
+  def with_render_tick tick
+    previous_render_tick = @render_tick
+    @render_tick = tick
+    yield
+  ensure
+    @render_tick = previous_render_tick
+  end
+
+  def shake! tick = Kernel.tick_count
+    @shake_started_at = tick
   end
 
   def world_point point
@@ -71,10 +79,10 @@ class Camera
     point.send(key)
   end
 
-  def shake_offset
+  def shake_offset tick = Kernel.tick_count
     return { x: 0, y: 0 } unless @shake_started_at
 
-    elapsed = Kernel.tick_count - @shake_started_at
+    elapsed = tick - @shake_started_at
     if elapsed >= SHAKE_DURATION
       @shake_started_at = nil
       return { x: 0, y: 0 }

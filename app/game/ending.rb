@@ -1,8 +1,9 @@
 class Game
-  def set_interaction_text text
+  def set_interaction_text text, slow: false
     @interaction_text = text
-    @interaction_started_at = text ? Kernel.tick_count : nil
+    @interaction_started_at = text ? interaction_tick_count : nil
     @interaction_finished_at = nil
+    @interaction_slow_text = !!slow
     @interaction_sacrificed_word = sacrificed_word_from_text(text)
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
@@ -34,7 +35,9 @@ class Game
     interactables.each { |interactable| interactable.update(args) }
     @player.stop! unless @ending_phase == :player_walks
     advance_ending_phase if ending_phase_complete?
+    update_ending_escaped_music(args)
     update_final_text_typing_sound(args)
+    update_ending_title_scramble_sound(args)
     update_ending_player_walk if @ending_phase == :player_walks
     update_player_footsteps(args, @ending_phase == :player_walks)
     @camera.follow(@player) if @ending_phase == :player_walks
@@ -63,6 +66,7 @@ class Game
     when :final_text_fade_out
       @ending_title_corruptor = TextCorruptor.new("EPITHET")
       @ending_title_started_at = Kernel.tick_count
+      @ending_title_scramble_sound_played = false
       set_ending_phase(:title_fade_in)
     when :title_fade_in
       set_ending_phase(:title_card)
@@ -110,14 +114,14 @@ class Game
     return false unless @interaction_text && @interaction_finished_at
     return false unless sacrifice_scramble_complete?
 
-    Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
+    interaction_tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
   end
 
   def sacrifice_scramble_complete?
     return true unless @interaction_sacrificed_word
 
     non_space_count = @interaction_sacrificed_word.length - @interaction_sacrificed_word.count(" ")
-    Kernel.tick_count - @interaction_finished_at >= non_space_count * SACRIFICE_SCRAMBLE_INTERVAL
+    interaction_tick_count - @interaction_finished_at >= non_space_count * SACRIFICE_SCRAMBLE_INTERVAL
   end
 
   def prepare_ending_walk
@@ -154,9 +158,9 @@ class Game
     @interaction_visible_character_count = visible_character_count
 
     if visible_character_count == @interaction_text.length
-      @interaction_finished_at ||= Kernel.tick_count
+      @interaction_finished_at ||= interaction_tick_count
       update_sacrifice_scramble_sound(args)
-      clear_interaction_text if !hold_final_sacrifice && Kernel.tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
+      clear_interaction_text if !hold_final_sacrifice && interaction_tick_count - @interaction_finished_at >= MESSAGE_DELAY_FRAMES
     end
   end
 
@@ -164,7 +168,7 @@ class Game
     return unless @interaction_sacrificed_word && @interaction_finished_at
     return if @interaction_scramble_sound_played
     return if @interaction_sacrificed_word.length == @interaction_sacrificed_word.count(" ")
-    return if Kernel.tick_count - @interaction_finished_at < SACRIFICE_SCRAMBLE_INTERVAL
+    return if interaction_tick_count - @interaction_finished_at < SACRIFICE_SCRAMBLE_INTERVAL
 
     @interaction_scramble_sound_played = true
     play_scramble_sound(args)
@@ -180,9 +184,49 @@ class Game
     @ending_final_text_visible_character_count = visible_character_count
   end
 
+  def update_ending_title_scramble_sound args
+    return unless [:title_fade_in, :title_card, :title_fade_out].include?(@ending_phase)
+    return unless @ending_title_started_at
+    return if @ending_title_scramble_sound_played
+    return if Kernel.tick_count - @ending_title_started_at < ENDING_TITLE_CORRUPT_AFTER_FRAMES
+
+    @ending_title_scramble_sound_played = true
+    play_scramble_sound(args)
+  end
+
+  def update_ending_escaped_music args
+    return unless [
+      :final_text_fade_in,
+      :final_text,
+      :final_text_fade_out,
+      :title_fade_in,
+      :title_card,
+      :title_fade_out,
+      :done
+    ].include?(@ending_phase)
+
+    start_ending_escaped_music(args) unless args.audio[ENDING_ESCAPED_MUSIC_KEY]
+    music = args.audio[ENDING_ESCAPED_MUSIC_KEY]
+    return unless music
+
+    @ending_escaped_music_started_at ||= Kernel.tick_count
+    elapsed = Kernel.tick_count - @ending_escaped_music_started_at
+    progress = (elapsed.to_f / ENDING_ESCAPED_MUSIC_FADE_FRAMES).clamp(0.0, 1.0)
+    music.gain = (ENDING_ESCAPED_MUSIC_GAIN * progress).clamp(0.0, ENDING_ESCAPED_MUSIC_GAIN)
+  end
+
+  def start_ending_escaped_music args
+    @ending_escaped_music_started_at = Kernel.tick_count
+    args.audio[ENDING_ESCAPED_MUSIC_KEY] = {
+      input: ENDING_ESCAPED_MUSIC_PATH,
+      gain: 0.0,
+      looping: true
+    }
+  end
+
   def play_typing_sound_for_character_count? visible_character_count, previous_character_count
     return false unless visible_character_count > previous_character_count
-    return true if ending_sequence_triggered?
+    return true if @interaction_slow_text || ending_sequence_triggered?
 
     visible_character_count.odd?
   end
@@ -191,6 +235,7 @@ class Game
     @interaction_text = nil
     @interaction_started_at = nil
     @interaction_finished_at = nil
+    @interaction_slow_text = false
     @interaction_sacrificed_word = nil
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
@@ -202,13 +247,16 @@ class Game
   def visible_interaction_text
     return "" unless @interaction_text && @interaction_started_at
 
-    elapsed = Kernel.tick_count - @interaction_started_at
+    elapsed = interaction_tick_count - @interaction_started_at
     character_count = elapsed.idiv(interaction_text_character_interval) + 1
     current_interaction_text[0, character_count.clamp(0, @interaction_text.length)]
   end
 
   def interaction_text_character_interval
-    ending_sequence_triggered? ? ENDING_MESSAGE_CHARACTER_INTERVAL : MESSAGE_CHARACTER_INTERVAL
+    return FINAL_SACRIFICE_MESSAGE_CHARACTER_INTERVAL if @interaction_slow_text
+    return ENDING_MESSAGE_CHARACTER_INTERVAL if ending_sequence_triggered?
+
+    MESSAGE_CHARACTER_INTERVAL
   end
 
   def current_interaction_text
@@ -218,7 +266,7 @@ class Game
   end
 
   def scrambled_sacrificed_word
-    elapsed = Kernel.tick_count - @interaction_finished_at
+    elapsed = interaction_tick_count - @interaction_finished_at
     @interaction_scramble_order ||= random_sacrifice_scramble_order(@interaction_sacrificed_word)
     scramble_count = elapsed.idiv(SACRIFICE_SCRAMBLE_INTERVAL).clamp(0, @interaction_scramble_order.length)
     scramble_tick = elapsed.idiv(SACRIFICE_SCRAMBLE_INTERVAL)

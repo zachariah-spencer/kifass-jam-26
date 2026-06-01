@@ -10,6 +10,7 @@ class Game
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.05.seconds
   ENDING_MESSAGE_CHARACTER_INTERVAL = MESSAGE_CHARACTER_INTERVAL * 2
+  FINAL_SACRIFICE_MESSAGE_CHARACTER_INTERVAL = ENDING_MESSAGE_CHARACTER_INTERVAL * 2
   FOOTSTEP_SOUND_PATH = "sounds/footstep.wav"
   FOOTSTEP_INTERVAL_FRAMES = 0.45.seconds
   FOOTSTEP_GAIN = 0.9
@@ -22,7 +23,7 @@ class Game
   SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
   SCRAMBLE_GAIN = 1.0
   NOTIFICATION_SOUND_PATH = "sounds/notification.wav"
-  NOTIFICATION_GAIN = 100.0
+  NOTIFICATION_GAIN = 0.75
   ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
   ALTAR_CRASHING_GAIN = 50.0
   NAMELESS_SOUND_PATHS = [
@@ -36,6 +37,10 @@ class Game
   NAMELESS_PITCH = 1.0
   NAMELESS_PITCH_SPREAD = 0.2
   NAMELESS_SACRIFICED_BELL_PITCH = 1.75
+  ENDING_ESCAPED_MUSIC_KEY = :bg_escaped
+  ENDING_ESCAPED_MUSIC_PATH = "sounds/bg_escaped.ogg"
+  ENDING_ESCAPED_MUSIC_GAIN = 0.5
+  ENDING_ESCAPED_MUSIC_FADE_FRAMES = 8.seconds
   ALTAR_REINFORCEMENT_TEXT = "The altar does not want blood. It wants a name."
   ENDING_TEXT_COMPLETE_DELAY_FRAMES = 2.seconds
   SACRIFICE_SCRAMBLE_INTERVAL = 0.08.seconds
@@ -118,7 +123,7 @@ class Game
   FINAL_LOCKED_GATE_FRAME_H = 1280
   LOCKED_GATE_FRAME_HOLD = 5
   MONSTER_FINAL_FADE_FRAMES = 1.seconds
-  BELL_SACRIFICE_SPEED_MULTIPLIER = 1.25
+  BELL_SACRIFICE_SPEED_MULTIPLIER = 1.15
   SANCTUM_REGULAR_ALTAR_IDS = [:sanctum_key_altar, :sanctum_memory_altar]
   SANCTUM_FINAL_ALTAR_ID = :sanctum_name_altar
   PLAYER_NAME_WORD = "YOUR NAME"
@@ -170,6 +175,7 @@ class Game
     @interaction_text = nil
     @interaction_started_at = nil
     @interaction_finished_at = nil
+    @interaction_slow_text = false
     @interaction_sacrificed_word = nil
     @interaction_scrambled_word = nil
     @interaction_scrambled_at = nil
@@ -179,6 +185,10 @@ class Game
     @mechanic_feedback_text = nil
     @mechanic_feedback_started_at = nil
     @mechanic_feedback_until = nil
+    @mechanic_feedback_freeze_started_at = nil
+    @mechanic_feedback_frozen_world_tick = nil
+    @world_paused_frames = 0
+    @post_mechanic_feedback_sfx = []
     @pointer_gesture = nil
     @touch_gestures = {}
     @touch_movement_id = nil
@@ -212,8 +222,44 @@ class Game
     @ending_player_target = nil
     @ending_title_corruptor = nil
     @ending_title_started_at = nil
+    @ending_title_scramble_sound_played = false
     @ending_final_text_visible_character_count = 0
+    @ending_escaped_music_started_at = nil
     @final_sacrifice_music_stopped = false
+  end
+
+  def mechanic_feedback_active?
+    return false unless @mechanic_feedback_text && @mechanic_feedback_started_at && @mechanic_feedback_until
+    return true if Kernel.tick_count < @mechanic_feedback_until
+
+    finish_mechanic_feedback_freeze
+    @mechanic_feedback_text = nil
+    @mechanic_feedback_started_at = nil
+    @mechanic_feedback_until = nil
+    false
+  end
+
+  def mechanic_feedback_freeze_active?
+    mechanic_feedback_active?
+  end
+
+  def world_tick_count
+    return @mechanic_feedback_frozen_world_tick if mechanic_feedback_freeze_active? && @mechanic_feedback_frozen_world_tick
+
+    Kernel.tick_count - (@world_paused_frames || 0)
+  end
+
+  def finish_mechanic_feedback_freeze
+    if @mechanic_feedback_freeze_started_at
+      @world_paused_frames ||= 0
+      @world_paused_frames += Kernel.tick_count - @mechanic_feedback_freeze_started_at
+    end
+    @mechanic_feedback_freeze_started_at = nil
+    @mechanic_feedback_frozen_world_tick = nil
+  end
+
+  def interaction_tick_count
+    ending_sequence_triggered? ? Kernel.tick_count : world_tick_count
   end
 
   def build_rooms

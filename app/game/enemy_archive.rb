@@ -17,7 +17,8 @@ class Game
         @player,
         current_room,
         enemy_patrol_points(current_room),
-        enemy_speed_multiplier(enemy)
+        enemy_speed_multiplier(enemy),
+        world_tick_count
       )
       play_nameless_sound(args) if previous_state != :chase && enemy.state == :chase
       update_enemy_patrol_sound(args, enemy, previous_state)
@@ -124,7 +125,7 @@ class Game
   def start_key_gate_animation_for gate_id, direction
     update_key_gate_frame(gate_id)
     state = @key_gate_states[gate_id]
-    state[:animation_started_at] = Kernel.tick_count
+    state[:animation_started_at] = world_tick_count
     state[:animation_direction] = direction
     state[:animation_from_frame] = state[:frame]
   end
@@ -134,7 +135,7 @@ class Game
     return state[:frame] unless state
     return state[:frame] unless state[:animation_started_at] && state[:animation_direction]
 
-    elapsed_frames = (Kernel.tick_count - state[:animation_started_at]).idiv(LOCKED_GATE_FRAME_HOLD)
+    elapsed_frames = (world_tick_count - state[:animation_started_at]).idiv(LOCKED_GATE_FRAME_HOLD)
     if state[:animation_direction] == :open
       state[:frame] = (state[:animation_from_frame] + elapsed_frames).clamp(0, LOCKED_GATE_FRAME_COUNT - 1)
     else
@@ -154,7 +155,7 @@ class Game
   end
 
   def input_locked?
-    ending_sequence_triggered? || reset_sequence_active?
+    ending_sequence_triggered? || reset_sequence_active? || mechanic_feedback_freeze_active?
   end
 
   def ending_complete?
@@ -170,25 +171,25 @@ class Game
 
   def ring_bell
     if bell_on_cooldown?
-      @bell_failed_pulse_until = Kernel.tick_count + BELL_FAILED_PULSE_FRAMES
+      @bell_failed_pulse_until = world_tick_count + BELL_FAILED_PULSE_FRAMES
       return
     end
 
-    @bell_last_used_at = Kernel.tick_count
+    @bell_last_used_at = world_tick_count
     add_bell_ring_pulse(@player.center)
-    current_enemies.each { |enemy| enemy.stun!(BELL_STUN_FRAMES) }
+    current_enemies.each { |enemy| enemy.stun!(BELL_STUN_FRAMES, world_tick_count) }
   end
 
   def bell_on_cooldown?
     return false unless @bell_last_used_at
 
-    Kernel.tick_count - @bell_last_used_at < BELL_COOLDOWN_FRAMES
+    world_tick_count - @bell_last_used_at < BELL_COOLDOWN_FRAMES
   end
 
   def bell_cooldown_progress
     return 0 unless @bell_last_used_at
 
-    elapsed = Kernel.tick_count - @bell_last_used_at
+    elapsed = world_tick_count - @bell_last_used_at
     return 0 if elapsed >= BELL_COOLDOWN_FRAMES
 
     1.0 - elapsed.to_f / BELL_COOLDOWN_FRAMES
@@ -283,13 +284,13 @@ class Game
       next unless spawn
 
       reset_enemy_to_archive!(enemy, spawn)
-      enemy.force_chase!(BELL_SACRIFICE_FORCED_CHASE_FRAMES)
+      enemy.force_chase!(BELL_SACRIFICE_FORCED_CHASE_FRAMES, world_tick_count)
       placed_rects << enemy.rect
     end
   end
 
   def reset_enemy_to_archive! enemy, spawn
-    enemy.reset!(:archive, spawn) if enemy && spawn
+    enemy.reset!(:archive, spawn, world_tick_count) if enemy && spawn
   end
 
   def ensure_sanctum_enemy!
@@ -539,7 +540,7 @@ class Game
       return false
     end
 
-    @archive_off_path_started_at ||= Kernel.tick_count
+    @archive_off_path_started_at ||= world_tick_count
     return false unless archive_off_path_warning_elapsed >= ARCHIVE_OFF_PATH_WARNING_FRAMES
 
     request_archive_path_reset
@@ -580,7 +581,7 @@ class Game
   def archive_off_path_warning_elapsed
     return 0 unless @archive_off_path_started_at
 
-    Kernel.tick_count - @archive_off_path_started_at
+    world_tick_count - @archive_off_path_started_at
   end
 
   def reset_archive_enemies
@@ -589,7 +590,7 @@ class Game
       next unless enemy.room_id == :archive
 
       spawn = enemy.id == :archive_bell_sacrifice ? archive_second_enemy_spawn(occupied_rects) : archive_enemy_spawn(occupied_rects)
-      enemy.reset!(:archive, spawn)
+      enemy.reset!(:archive, spawn, world_tick_count)
       occupied_rects << enemy.rect
     end
   end
@@ -599,7 +600,7 @@ class Game
     @enemies.each do |enemy|
       next unless enemy.room_id == :sanctum
 
-      enemy.reset!(:sanctum, sanctum_enemy_spawn(occupied_rects))
+      enemy.reset!(:sanctum, sanctum_enemy_spawn(occupied_rects), world_tick_count)
       occupied_rects << enemy.rect
     end
   end

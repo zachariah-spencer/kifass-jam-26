@@ -47,19 +47,19 @@ class Interactable
     @sacrificed
   end
 
-  def sacrifice!
+  def sacrifice! tick = Kernel.tick_count
     @sacrificed = true
   end
 
   def update args
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
   end
 
-  def render_highlight args, outputs = args.outputs, camera = nil
+  def render_highlight args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     highlight_rect = camera ? camera.screen_rect(rect) : rect
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 60)
+    pulse = Math.sin(tick * Math::PI * 2 / 60)
     inset = -6 - pulse * 2
     rect = {
       x: highlight_rect[:x] + inset,
@@ -72,7 +72,7 @@ class Interactable
     outputs.sprites << Render.solid(rect, :ash, a: 24)
   end
 
-  def render_light args, outputs = args.outputs, camera = nil
+  def render_light args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     light_center = camera ? camera.screen_point(center) : center
     light_size = [@w, @h].max / 2# + PASSIVE_LIGHT_PADDING
     outputs.sprites << light_center.merge(
@@ -86,8 +86,8 @@ class Interactable
     )
   end
 
-  def oscillating_light_size base_size, amount, phase = 0
-    wave = Math.sin((Kernel.tick_count + phase) * Math::PI * 2 / LIGHT_OSCILLATION_FRAMES)
+  def oscillating_light_size base_size, amount, phase = 0, tick = Kernel.tick_count
+    wave = Math.sin((tick + phase) * Math::PI * 2 / LIGHT_OSCILLATION_FRAMES)
     base_size + wave * amount
   end
 end

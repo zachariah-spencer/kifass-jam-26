@@ -33,11 +33,11 @@ class Exit < Interactable
     !locked?
   end
 
-  def unlock!
+  def unlock! tick = Kernel.tick_count
     return unless @locked
 
     @locked = false
-    @unlocked_at = Kernel.tick_count
+    @unlocked_at = tick
   end
 
   def interaction_text
@@ -46,13 +46,13 @@ class Exit < Interactable
     "The passage exhales cold air."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     exit_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << exit_sprite(exit_rect)
+    outputs.sprites << exit_sprite(exit_rect, tick)
   end
 
-  def exit_sprite exit_rect
-    frame_index = exit_frame_index
+  def exit_sprite exit_rect, tick = Kernel.tick_count
+    frame_index = exit_frame_index(tick)
 
     exit_rect.merge(
       path: SPRITE_PATH,
@@ -63,13 +63,9 @@ class Exit < Interactable
     )
   end
 
-  def exit_frame_index
+  def exit_frame_index tick = Kernel.tick_count
     return 0 unless @unlocked_at
 
-    @unlocked_at.frame_index(
-      count: FRAME_COUNT,
-      hold_for: FRAME_HOLD,
-      loop: false
-    ) || FRAME_COUNT - 1
+    (tick - @unlocked_at).idiv(FRAME_HOLD).clamp(0, FRAME_COUNT - 1)
   end
 end

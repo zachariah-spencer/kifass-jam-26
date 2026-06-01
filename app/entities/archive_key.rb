@@ -17,7 +17,7 @@ class ArchiveKey < Interactable
     "The shape is gone; only the need for it remains."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     key_rect = camera ? camera.screen_rect(rect) : rect
     outputs.sprites << key_rect.merge(
       path: SPRITE_PATH,

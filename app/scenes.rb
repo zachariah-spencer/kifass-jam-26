@@ -578,12 +578,12 @@ class PlayScene < BaseScene
       return @game.render(args)
     end
 
-    if !@game.input_locked? && args.inputs.keyboard.key_down.r
+    if !@game.input_locked? && !@game.mechanic_feedback_freeze_active? && args.inputs.keyboard.key_down.r
       @game.request_give_up_reset
       return @game.render(args)
     end
 
-    if !@game.input_locked? && args.inputs.keyboard.key_down.escape
+    if !@game.input_locked? && !@game.mechanic_feedback_freeze_active? && args.inputs.keyboard.key_down.escape
       args.state.next_scene = :title
       return @game.render(args)
     end

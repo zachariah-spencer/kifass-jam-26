@@ -35,6 +35,11 @@ class Game
   end
 
   def render_lit_scene args
+    tick = ending_sequence_triggered? ? Kernel.tick_count : world_tick_count
+    return @camera.with_render_tick(tick) { render_lit_scene_at(args, tick) }
+  end
+
+  def render_lit_scene_at args, tick
     args.outputs[:scene].set(w: Grid.w, h: Grid.h, background_color: [10, 9, 14, 255])
     args.outputs[:darkness].set(w: Grid.w, h: Grid.h, background_color: [0, 0, 0, 0])
 
@@ -42,25 +47,25 @@ class Game
     render_room_barriers(args, args.outputs[:scene])
     render_archive_safe_paths(args, args.outputs[:scene])
     render_mirror_safe_path_surge_lights(args.outputs[:scene], nil, scene: true, darkness: false)
-    interactables.each { |interactable| render_interactable(args, interactable, args.outputs[:scene]) }
+    interactables.each { |interactable| render_interactable(args, interactable, args.outputs[:scene], tick) }
     render_lamp_sacrifice_gutter_scene(args.outputs[:scene])
     render_bell_ring_pulses(args.outputs[:scene])
-    nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera) unless input_locked? }
-    current_enemies.each { |enemy| enemy.render(args, args.outputs[:scene], @camera) }
+    nearby_interactables.each { |interactable| interactable.render_highlight(args, args.outputs[:scene], @camera, tick) unless input_locked? }
+    current_enemies.each { |enemy| enemy.render(args, args.outputs[:scene], @camera, tick) }
     render_bell_sacrifice_monster_flare(args.outputs[:scene])
-    @player.render(args, args.outputs[:scene], @camera, player_alpha)
-    render_ambient_dust(args, args.outputs[:scene])
+    @player.render(args, args.outputs[:scene], @camera, player_alpha, tick)
+    render_ambient_dust(args, args.outputs[:scene], tick)
     args.outputs[:darkness].sprites << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :solid, r: 0, g: 0, b: 0, a: 255 }
-    interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera) }
+    interactables.each { |interactable| interactable.render_light(args, args.outputs[:darkness], @camera, tick) }
     render_lamp_sacrifice_gutter_lights(args.outputs[:darkness])
-    current_enemies.each { |enemy| enemy.render_light(args, args.outputs[:darkness], @camera) }
+    current_enemies.each { |enemy| enemy.render_light(args, args.outputs[:darkness], @camera, tick) }
     lamp_effect = learned_word_effect("LAMP", LEARNED_LAMP_EFFECT_FRAMES)
     if lamp_effect
       render_lamp_power_up_player_light(args.outputs[:darkness], lamp_effect)
     elsif @player_light_size_effect
       render_player_light_size_effect(args.outputs[:darkness])
     else
-      @player.render_light(args, args.outputs[:darkness], @camera, archive_off_path_light_multiplier)
+      @player.render_light(args, args.outputs[:darkness], @camera, archive_off_path_light_multiplier, tick)
     end
     render_lamp_power_up_lights(args.outputs[:scene], args.outputs[:darkness], lamp_effect)
     render_mirror_safe_path_surge_lights(nil, args.outputs[:darkness], scene: false, darkness: true)
@@ -69,18 +74,18 @@ class Game
     args.outputs.primitives << { x: 0, y: 0, w: Grid.w, h: Grid.h, path: :darkness }
   end
 
-  def render_interactable args, interactable, outputs
+  def render_interactable args, interactable, outputs, tick = world_tick_count
     if interactable.is_a?(FinalDoor)
-      interactable.render(args, outputs, @camera, final_door_open?)
+      interactable.render(args, outputs, @camera, final_door_open?, tick)
     else
-      interactable.render(args, outputs, @camera)
+      interactable.render(args, outputs, @camera, tick)
     end
   end
 
   def archive_off_path_light_multiplier
     return 1.0 unless archive_off_path_warning_active?
 
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 10)
+    pulse = Math.sin(world_tick_count * Math::PI * 2 / 10)
     (0.66 + pulse * 0.14).clamp(0.5, 1.0)
   end
 
@@ -125,7 +130,7 @@ class Game
   def mirror_safe_path_surge_screen_rects
     shake = @camera.shake_offset
     cache_key = [
-      Kernel.tick_count,
+      world_tick_count,
       @camera.x,
       @camera.y,
       @camera.zoom,
@@ -249,13 +254,13 @@ class Game
   end
 
   def sacrifice_lamp_flicker effect
-    wave = Math.sin(Kernel.tick_count * Math::PI * 2 / 5).abs
+    wave = Math.sin(world_tick_count * Math::PI * 2 / 5).abs
     fade = 1.0 - effect[:progress]
     (0.35 + wave * 0.65) * fade
   end
 
   def sacrifice_lamp_darkness_flicker effect
-    wave = Math.sin(Kernel.tick_count * Math::PI * 2 / 5).abs
+    wave = Math.sin(world_tick_count * Math::PI * 2 / 5).abs
     build = effect[:progress]
     (0.2 + wave * 0.8) * build
   end
@@ -268,7 +273,7 @@ class Game
     alpha = (210 * strength).to_i
     current_enemies.each do |enemy|
       enemy_rect = @camera.screen_rect(enemy.rect)
-      frame_index = Kernel.tick_count.idiv(NamelessThing::CHASE_FRAME_HOLD) % NamelessThing::FRAME_COUNT
+      frame_index = world_tick_count.idiv(NamelessThing::CHASE_FRAME_HOLD) % NamelessThing::FRAME_COUNT
       outputs.sprites << scaled_rect(enemy_rect, 1.12).merge(
         path: NamelessThing::CHASE_SPRITE_PATH,
         tile_x: frame_index % NamelessThing::FRAME_COLUMNS * NamelessThing::FRAME_SIZE,
@@ -303,7 +308,7 @@ class Game
     progress = effect_progress(@player_light_size_effect[:started_at], @player_light_size_effect[:duration])
     unless progress
       @player_light_size_effect = nil
-      @player.render_light(nil, outputs, @camera, archive_off_path_light_multiplier)
+      @player.render_light(nil, outputs, @camera, archive_off_path_light_multiplier, world_tick_count)
       return
     end
 
@@ -336,7 +341,7 @@ class Game
   end
 
   def player_light_render_size base_size
-    @player.oscillating_light_size(base_size, Player::LIGHT_OSCILLATION_AMOUNT)
+    @player.oscillating_light_size(base_size, Player::LIGHT_OSCILLATION_AMOUNT, world_tick_count)
   end
 
   def render_bell_ring_pulses outputs
@@ -380,7 +385,7 @@ class Game
   end
 
   def effect_progress started_at, duration
-    progress = (Kernel.tick_count - started_at).to_f / duration
+    progress = (world_tick_count - started_at).to_f / duration
     return nil if progress >= 1.0
 
     progress.clamp(0, 1)
@@ -395,18 +400,17 @@ class Game
     }
   end
 
-  def render_ambient_dust args, outputs = args.outputs
+  def render_ambient_dust args, outputs = args.outputs, tick = world_tick_count
     cam_x = @camera.x
     cam_y = @camera.y
     zoom = Camera::ZOOM
-    shake = @camera.shake_offset
+    shake = @camera.shake_offset(tick)
     shake_x = shake[:x]
     shake_y = shake[:y]
     min_col = (cam_x / DUST_PARTICLE_CELL_SIZE).floor
     max_col = ((cam_x + @camera.visible_w) / DUST_PARTICLE_CELL_SIZE).ceil
     min_row = (cam_y / DUST_PARTICLE_CELL_SIZE).floor
     max_row = ((cam_y + @camera.visible_h) / DUST_PARTICLE_CELL_SIZE).ceil
-    tick = Kernel.tick_count
     two_pi = Math::PI * 2
 
     @dust_particle_cells ||= {}

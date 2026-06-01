@@ -13,11 +13,11 @@ class Altar < Interactable
     @sacrificed_at = nil
   end
 
-  def sacrifice!
+  def sacrifice! tick = Kernel.tick_count
     return if sacrificed?
 
     super
-    @sacrificed_at = Kernel.tick_count
+    @sacrificed_at = tick
   end
 
   def interact game, args = nil
@@ -32,19 +32,15 @@ class Altar < Interactable
     "The altar waits for a name."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     altar_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << altar_sprite(altar_rect)
+    outputs.sprites << altar_sprite(altar_rect, tick)
   end
 
-  def altar_sprite altar_rect
+  def altar_sprite altar_rect, tick = Kernel.tick_count
     return altar_rect.merge(path: SPRITE_PATH) unless sacrificed?
 
-    frame_index = @sacrificed_at.frame_index(
-      count: BREAK_FRAME_COUNT,
-      hold_for: BREAK_FRAME_HOLD,
-      loop: false
-    ) || BREAK_FRAME_COUNT - 1
+    frame_index = (tick - @sacrificed_at).idiv(BREAK_FRAME_HOLD).clamp(0, BREAK_FRAME_COUNT - 1)
 
     altar_rect.merge(
       path: BREAK_SPRITE_PATH,

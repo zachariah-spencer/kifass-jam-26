@@ -16,7 +16,7 @@ class Bell < Interactable
     "The silent hooks remember a weight they cannot name."
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     bell_rect = camera ? camera.screen_rect(rect) : rect
     outputs.sprites << bell_rect.merge(
       path: SPRITE_PATH,

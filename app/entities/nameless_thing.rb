@@ -47,15 +47,15 @@ class NamelessThing
     { x: @x + @w / 2, y: @y + @h / 2 }
   end
 
-  def update args, player, room, patrol_points, speed_multiplier = 1.0
+  def update args, player, room, patrol_points, speed_multiplier = 1.0, tick = Kernel.tick_count
     return nil if final_fading?
 
-    if stunned?
+    if stunned?(tick)
       @state = :stunned
       return nil
     end
 
-    set_state(forced_chase? || close_to_player?(player) ? :chase : :patrol)
+    set_state(forced_chase?(tick) || close_to_player?(player) ? :chase : :patrol, tick)
 
     target = @state == :chase ? player.center : current_patrol_point(patrol_points)
     speed = @state == :chase ? CHASE_SPEED : PATROL_SPEED
@@ -63,7 +63,7 @@ class NamelessThing
     advance_patrol(patrol_points) if @state == :patrol
   end
 
-  def reset! room_id, spawn
+  def reset! room_id, spawn, tick = Kernel.tick_count
     @room_id = room_id
     @x = spawn[:x]
     @y = spawn[:y]
@@ -71,7 +71,7 @@ class NamelessThing
     @patrol_index = 0
     @stunned_started_at = nil
     @stunned_until = 0
-    @animation_started_at = Kernel.tick_count
+    @animation_started_at = tick
     @light_fade_started_at = nil
     @light_fade_direction = nil
     @final_fade_started_at = nil
@@ -79,9 +79,9 @@ class NamelessThing
     @chase_music_active = false
   end
 
-  def stun! duration_frames
-    @stunned_started_at = Kernel.tick_count
-    @stunned_until = [@stunned_until, Kernel.tick_count + duration_frames].max
+  def stun! duration_frames, tick = Kernel.tick_count
+    @stunned_started_at = tick
+    @stunned_until = [@stunned_until, tick + duration_frames].max
   end
 
   def clear_stun!
@@ -89,27 +89,27 @@ class NamelessThing
     @stunned_until = 0
   end
 
-  def force_chase! duration_frames = nil
+  def force_chase! duration_frames = nil, tick = Kernel.tick_count
     @stunned_started_at = nil
     @stunned_until = 0
-    @forced_chase_until = duration_frames ? Kernel.tick_count + duration_frames : nil
-    set_state(:chase)
+    @forced_chase_until = duration_frames ? tick + duration_frames : nil
+    set_state(:chase, tick)
   end
 
-  def forced_chase?
-    @forced_chase_until && Kernel.tick_count < @forced_chase_until
+  def forced_chase? tick = Kernel.tick_count
+    @forced_chase_until && tick < @forced_chase_until
   end
 
   def chase_music_active?
     @chase_music_active
   end
 
-  def stunned?
-    Kernel.tick_count < @stunned_until
+  def stunned? tick = Kernel.tick_count
+    tick < @stunned_until
   end
 
-  def start_final_fade!
-    @final_fade_started_at ||= Kernel.tick_count
+  def start_final_fade! tick = Kernel.tick_count
+    @final_fade_started_at ||= tick
     @stunned_started_at = nil
     @stunned_until = 0
     @state = :stunned
@@ -119,37 +119,33 @@ class NamelessThing
     !!@final_fade_started_at
   end
 
-  def render args, outputs = args.outputs, camera = nil
-    alpha = render_alpha
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
+    alpha = render_alpha(tick)
     return if alpha <= 0
 
     enemy_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << enemy_rect.merge(enemy_sprite).merge(stun_tint).merge(a: alpha)
+    outputs.sprites << enemy_rect.merge(enemy_sprite(tick)).merge(stun_tint(tick)).merge(a: alpha)
   end
 
-  def set_state next_state
+  def set_state next_state, tick = Kernel.tick_count
     return if @state == next_state
 
     if @state == :patrol && next_state == :chase
-      @light_fade_started_at = Kernel.tick_count
+      @light_fade_started_at = tick
       @light_fade_direction = :in
     elsif @state == :chase && next_state == :patrol
-      @light_fade_started_at = Kernel.tick_count
+      @light_fade_started_at = tick
       @light_fade_direction = :out
     end
     @chase_music_active = next_state == :chase
     @state = next_state
-    @animation_started_at = Kernel.tick_count
+    @animation_started_at = tick
   end
 
-  def enemy_sprite
+  def enemy_sprite tick = Kernel.tick_count
     chasing = @state == :chase
     frame_hold = chasing ? CHASE_FRAME_HOLD : PATROL_FRAME_HOLD
-    frame_index = @animation_started_at.frame_index(
-      count: FRAME_COUNT,
-      hold_for: frame_hold,
-      repeat: true
-    ) || 0
+    frame_index = ((tick - @animation_started_at).idiv(frame_hold) % FRAME_COUNT).clamp(0, FRAME_COUNT - 1)
 
     {
       path: chasing ? CHASE_SPRITE_PATH : PATROL_SPRITE_PATH,
@@ -160,15 +156,15 @@ class NamelessThing
     }
   end
 
-  def stun_tint
-    return {} unless stunned?
+  def stun_tint tick = Kernel.tick_count
+    return {} unless stunned?(tick)
 
-    elapsed = Kernel.tick_count - (@stunned_started_at || Kernel.tick_count)
+    elapsed = tick - (@stunned_started_at || tick)
     elapsed.idiv(STUN_BLINK_FRAME_HOLD).even? ? STUN_TEAL_BLUE_TINT : STUN_WHITE_TINT
   end
 
-  def render_light args, outputs = args.outputs, camera = nil
-    alpha = light_alpha
+  def render_light args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
+    alpha = light_alpha(tick)
     return if alpha <= 0
 
     light_center = camera ? camera.screen_point(center) : center
@@ -186,20 +182,20 @@ class NamelessThing
     )
   end
 
-  def light_alpha
-    return render_alpha if final_fading?
+  def light_alpha tick = Kernel.tick_count
+    return render_alpha(tick) if final_fading?
     return 255 if @state == :chase && @light_fade_direction != :in
     return 0 unless @light_fade_started_at
 
-    elapsed = Kernel.tick_count - @light_fade_started_at
+    elapsed = tick - @light_fade_started_at
     progress = (elapsed * 255 / LIGHT_FADE_FRAMES).clamp(0, 255)
     @light_fade_direction == :in ? progress : 255 - progress
   end
 
-  def render_alpha
+  def render_alpha tick = Kernel.tick_count
     return 255 unless @final_fade_started_at
 
-    elapsed = Kernel.tick_count - @final_fade_started_at
+    elapsed = tick - @final_fade_started_at
     (255 - elapsed * 255 / Game::MONSTER_FINAL_FADE_FRAMES).clamp(0, 255)
   end
 

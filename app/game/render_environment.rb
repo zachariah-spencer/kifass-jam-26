@@ -150,7 +150,7 @@ class Game
   end
 
   def env_render_transform
-    shake = @camera.shake_offset
+    shake = @camera.shake_offset(world_tick_count)
     {
       x: @camera.x,
       y: @camera.y,
@@ -251,7 +251,7 @@ class Game
     return unless @current_room_id == :archive
     return unless @learned_words.include?("MIRROR") || @sacrificed_words.include?("MIRROR")
 
-    pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
+    pulse = Math.sin(world_tick_count * Math::PI * 2 / 120)
     mirror_sacrifice_effect = sacrifice_effect("MIRROR", SACRIFICE_MIRROR_FLICKER_FRAMES)
     if mirror_sacrifice_effect
       render_mirror_sacrifice_flicker(outputs, mirror_sacrifice_effect)
@@ -291,7 +291,7 @@ class Game
     return gate_rect unless effect
 
     pulse = Math.sin(effect[:progress] * Math::PI)
-    jitter = Math.sin(Kernel.tick_count * Math::PI * 2 / 3) * 5 * (1.0 - effect[:progress])
+    jitter = Math.sin(world_tick_count * Math::PI * 2 / 3) * 5 * (1.0 - effect[:progress])
     rect = scaled_rect(gate_rect, 1.0 + pulse * 0.08)
     rect.merge(x: rect[:x] + jitter)
   end
@@ -327,7 +327,7 @@ class Game
   def sacrificed_mirror_safe_path_cells
     @sacrificed_mirror_safe_path_cells ||= begin
       cells = archive_safe_path_cells
-      keep_count = (cells.length * 0.25).ceil
+      keep_count = (cells.length * 0.5).ceil
       cells.sort_by { |col, row| sacrificed_mirror_cell_seed(col, row) }.first(keep_count)
     end
   end
@@ -338,7 +338,7 @@ class Game
 
   def render_mirror_sacrifice_flicker outputs, effect
     progress = effect[:progress]
-    tick_gate = Kernel.tick_count.idiv(4)
+    tick_gate = world_tick_count.idiv(4)
     alpha = (160 * (1.0 - progress)).to_i.clamp(18, 180)
     visible = env_visible_rect(ENV_TILE_SIZE)
     transform = env_render_transform

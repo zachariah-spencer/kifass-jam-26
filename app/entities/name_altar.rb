@@ -6,9 +6,9 @@ class NameAltar < Altar
     game.open_altar(self)
   end
 
-  def render args, outputs = args.outputs, camera = nil
+  def render args, outputs = args.outputs, camera = nil, tick = Kernel.tick_count
     altar_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << altar_sprite(altar_rect).merge(Render.color(:ember))
+    outputs.sprites << altar_sprite(altar_rect, tick).merge(Render.color(:ember))
   end
 
   def interaction_text

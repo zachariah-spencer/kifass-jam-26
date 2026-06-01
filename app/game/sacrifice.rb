@@ -48,23 +48,24 @@ class Game
   def sacrifice_word args, word
     return unless sacrificeable_words.include?(word)
 
-    play_altar_crashing_sound(args)
-
     active_altar_id = @active_altar ? @active_altar.id : nil
     if player_name_word?(word)
-      @camera.shake!
+      sacrifice_tick = Kernel.tick_count
+      play_altar_crashing_sound(args)
+      @camera.shake!(world_tick_count)
       @sacrificed_words << PLAYER_NAME_WORD unless @sacrificed_words.include?(PLAYER_NAME_WORD)
       seed_forgotten_word_corruptor(PLAYER_NAME_WORD)
       @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
-      @active_altar.sacrifice! if @active_altar
+      @active_altar.sacrifice!(sacrifice_tick) if @active_altar
       close_altar
-      set_interaction_text("You sacrificed #{word}.")
       stop_music_for_final_sacrifice!
       start_ending_sequence
+      set_interaction_text("You sacrificed #{word}.", slow: true)
       return
     end
 
     trigger_player_light_size_effect(@player.light_size, SACRIFICED_LAMP_LIGHT_SIZE, SACRIFICED_LAMP_EFFECT_FRAMES) if word == "LAMP"
+    defer_post_mechanic_feedback_sfx(:altar_crashing)
     @player.light_size = SACRIFICED_LAMP_LIGHT_SIZE if word == "LAMP"
     start_key_gate_animation(:close) if word == "KEY"
     trigger_sacrifice_effect(word)
@@ -73,7 +74,7 @@ class Game
     @sacrificed_words << word unless @sacrificed_words.include?(word)
     seed_forgotten_word_corruptor(word)
     if word == "BELL"
-      play_nameless_sound(args, high_pitch: true)
+      defer_post_mechanic_feedback_sfx(:nameless, high_pitch: true)
       @enemies.each(&:clear_stun!)
       handle_bell_sacrifice_enemies!
     elsif word == "KEY"
@@ -85,22 +86,45 @@ class Game
       next unless interactable.word == word
 
       @sacrificed_object_ids << interactable.id unless @sacrificed_object_ids.include?(interactable.id)
-      interactable.sacrifice!
+      interactable.sacrifice!(world_tick_count)
     end
 
     unlock_exits_for(active_altar_id)
     @sacrificed_object_ids << @active_altar.id if @active_altar && !@sacrificed_object_ids.include?(@active_altar.id)
-    @active_altar.sacrifice! if @active_altar
-    @camera.shake!
+    @active_altar.sacrifice!(world_tick_count) if @active_altar
+    @camera.shake!(world_tick_count)
     close_altar
     show_mechanic_feedback(SACRIFICE_CONSEQUENCE_MESSAGES[word], args)
     set_interaction_text("You sacrificed #{word}.")
+  end
+
+  def defer_post_mechanic_feedback_sfx name, options = {}
+    @post_mechanic_feedback_sfx ||= []
+    @post_mechanic_feedback_sfx << { name: name, options: options }
+  end
+
+  def flush_post_mechanic_feedback_sfx args
+    return if mechanic_feedback_freeze_active?
+    return if !@post_mechanic_feedback_sfx || @post_mechanic_feedback_sfx.empty?
+
+    pending_sfx = @post_mechanic_feedback_sfx
+    @post_mechanic_feedback_sfx = []
+    pending_sfx.each do |sfx|
+      case sfx[:name]
+      when :altar_crashing
+        play_altar_crashing_sound(args)
+      when :nameless
+        play_nameless_sound(args, **sfx[:options])
+      end
+    end
   end
 
   def show_mechanic_feedback text, args = nil
     return unless text
 
     play_notification_sound(args) if args
+    @mechanic_feedback_frozen_world_tick = world_tick_count
+    @mechanic_feedback_freeze_started_at = Kernel.tick_count
     @mechanic_feedback_text = text
     @mechanic_feedback_started_at = Kernel.tick_count
     @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FRAMES
@@ -108,7 +132,7 @@ class Game
 
   def trigger_learned_word_effect word, source, previous_player_light_size = nil
     @learned_word_effects[word] = {
-      started_at: Kernel.tick_count,
+      started_at: world_tick_count,
       source_id: source.id,
       previous_player_light_size: previous_player_light_size,
       learned_player_light_size: word == "LAMP" ? LEARNED_LAMP_LIGHT_SIZE : @player.light_size
@@ -117,7 +141,7 @@ class Game
   end
 
   def trigger_sacrifice_effect word
-    @sacrifice_effects[word] = { started_at: Kernel.tick_count }
+    @sacrifice_effects[word] = { started_at: world_tick_count }
   end
 
   def seed_forgotten_word_corruptor word
@@ -142,13 +166,13 @@ class Game
     @bell_ring_pulses << {
       x: center[:x],
       y: center[:y],
-      started_at: Kernel.tick_count
+      started_at: world_tick_count
     }
   end
 
   def trigger_player_light_size_effect from_size, to_size, duration
     @player_light_size_effect = {
-      started_at: Kernel.tick_count,
+      started_at: world_tick_count,
       from_size: from_size,
       to_size: to_size,
       duration: duration
@@ -162,7 +186,7 @@ class Game
       next unless interactable.is_a?(Exit)
       next unless interactable.unlock_altar_id == altar_id
 
-      interactable.unlock!
+      interactable.unlock!(world_tick_count)
     end
   end
 

@@ -1,17 +1,12 @@
-* EXCEPTION:
-* EXCEPTION: ~Runtime#add_to_require_queue~ failed for =app/game/core.rb=.
-* ERROR:
-** method_missing: s
-** instance:       1
-** on class:       Integer
-** with modules:   [NumericDeprecated, ValueType, Comparable, PP::ObjectMixin, Kernel]
-** with values:    1
-** given args:     [[]]
-** exception:      can't define singleton
-** backtrace:
-app/game/core.rb:96
-app/game/core.rb:1
-
+* EXCEPTION: 'sacrifice!': wrong number of arguments (1 for 0)
 ** Backtrace:
-*** app/game/core.rb:96
-*** app/game/core.rb:1
+*** app/entities/interactable.rb:50:in sacrifice!
+*** app/entities/lamp.rb:23:in sacrifice!
+*** app/game/sacrifice.rb:88:in sacrifice_word
+*** app/game/sacrifice.rb:84:in sacrifice_word
+*** app/game/sacrifice.rb:41:in handle_altar_selection
+*** app/game/input.rb:101:in handle_interaction
+*** app/game/input.rb:15:in update
+*** app/scenes.rb:591:in tick
+*** app/root_scene.rb:44:in tick
+*** app/main.rb:13:in tick

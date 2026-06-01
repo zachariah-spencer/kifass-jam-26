@@ -6,7 +6,7 @@ class Game
     return update_ending_sequence(args) if ending_sequence_triggered?
     return update_reset_sequence if reset_sequence_active?
 
-    update_room_transition
+    update_room_transition(args)
     return if room_transition_active?
 
     update_pointer_gesture(args)
@@ -65,6 +65,16 @@ class Game
     args.audio[:"altar_crashing_#{@altar_crashing_audio_index}"] = {
       input: ALTAR_CRASHING_SOUND_PATH,
       gain: ALTAR_CRASHING_GAIN.to_f,
+      looping: false
+    }
+  end
+
+  def play_nameless_sound args, high_pitch: word_sacrificed?("BELL")
+    @nameless_audio_index += 1
+    args.audio[:"nameless_#{@nameless_audio_index}"] = {
+      input: NAMELESS_SOUND_PATHS[rand(NAMELESS_SOUND_PATHS.length)],
+      gain: NAMELESS_GAIN.to_f,
+      pitch: high_pitch ? NAMELESS_SACRIFICED_BELL_PITCH : NAMELESS_PITCH,
       looping: false
     }
   end

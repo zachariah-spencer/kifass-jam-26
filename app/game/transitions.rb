@@ -117,12 +117,13 @@ class Game
     @reset_sequence[:show_hint] ? RESET_FADE_IN_FRAMES : ARCHIVE_PATH_RESET_FADE_FRAMES
   end
 
-  def update_room_transition
+  def update_room_transition args
     return unless @room_transition
 
     elapsed = Kernel.tick_count - @room_transition[:started_at]
     if @room_transition[:phase] == :fade_out && elapsed >= ROOM_FADE_OUT_FRAMES
       enter_room(@room_transition[:target_room_id], @room_transition[:target_spawn_id])
+      play_nameless_sound(args) if current_enemies.any?
       @room_transition[:phase] = :fade_in
       @room_transition[:started_at] = Kernel.tick_count
     elsif @room_transition[:phase] == :fade_in && elapsed >= ROOM_FADE_IN_FRAMES

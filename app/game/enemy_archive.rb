@@ -11,6 +11,7 @@ class Game
     return false if ending_sequence_triggered?
 
     current_enemies.each do |enemy|
+      previous_state = enemy.state
       enemy.update(
         args,
         @player,
@@ -18,6 +19,7 @@ class Game
         enemy_patrol_points(current_room),
         enemy_speed_multiplier(enemy)
       )
+      play_nameless_sound(args) if previous_state != :chase && enemy.state == :chase
 
       next unless rects_intersect?(enemy.rect, @player.rect)
 

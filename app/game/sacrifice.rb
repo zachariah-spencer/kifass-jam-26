@@ -72,6 +72,7 @@ class Game
     @sacrificed_words << word unless @sacrificed_words.include?(word)
     seed_forgotten_word_corruptor(word)
     if word == "BELL"
+      play_nameless_sound(args, high_pitch: true)
       @enemies.each(&:clear_stun!)
       handle_bell_sacrifice_enemies!
     elsif word == "KEY"

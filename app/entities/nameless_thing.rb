@@ -10,7 +10,7 @@ class NamelessThing
   LIGHT_SIZE = 256
   LIGHT_FADE_FRAMES = Render::TRANSITION_FRAMES
   PATROL_SPEED = 1.25 * WorldScale::FACTOR
-  CHASE_SPEED = 1.95 * WorldScale::FACTOR
+  CHASE_SPEED = 1.85 * WorldScale::FACTOR
   CHASE_RADIUS = WorldScale.value(350)
   PATROL_TARGET_DISTANCE = WorldScale.value(18)
   STUN_BLINK_FRAME_HOLD = 5
@@ -36,6 +36,7 @@ class NamelessThing
     @light_fade_direction = nil
     @final_fade_started_at = nil
     @forced_chase_until = nil
+    @chase_music_active = false
   end
 
   def rect
@@ -75,6 +76,7 @@ class NamelessThing
     @light_fade_direction = nil
     @final_fade_started_at = nil
     @forced_chase_until = nil
+    @chase_music_active = false
   end
 
   def stun! duration_frames
@@ -96,6 +98,10 @@ class NamelessThing
 
   def forced_chase?
     @forced_chase_until && Kernel.tick_count < @forced_chase_until
+  end
+
+  def chase_music_active?
+    @chase_music_active
   end
 
   def stunned?
@@ -131,6 +137,7 @@ class NamelessThing
       @light_fade_started_at = Kernel.tick_count
       @light_fade_direction = :out
     end
+    @chase_music_active = next_state == :chase
     @state = next_state
     @animation_started_at = Kernel.tick_count
   end

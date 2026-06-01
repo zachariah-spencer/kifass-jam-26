@@ -1,5 +1,17 @@
-* EXCEPTION: non float value
+* EXCEPTION:
+* EXCEPTION: ~Runtime#add_to_require_queue~ failed for =app/game/core.rb=.
+* ERROR:
+** method_missing: s
+** instance:       1
+** on class:       Integer
+** with modules:   [NumericDeprecated, ValueType, Comparable, PP::ObjectMixin, Kernel]
+** with values:    1
+** given args:     [[]]
+** exception:      can't define singleton
+** backtrace:
+app/game/core.rb:96
+app/game/core.rb:1
+
 ** Backtrace:
-*** app/root_scene.rb:160:in render_transition
-*** app/root_scene.rb:48:in tick
-*** app/main.rb:13:in tick
+*** app/game/core.rb:96
+*** app/game/core.rb:1

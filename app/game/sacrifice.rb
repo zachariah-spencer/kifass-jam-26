@@ -59,6 +59,7 @@ class Game
       @active_altar.sacrifice! if @active_altar
       close_altar
       set_interaction_text("You sacrificed #{word}.")
+      stop_music_for_final_sacrifice!
       start_ending_sequence
       return
     end
@@ -101,6 +102,7 @@ class Game
 
     play_notification_sound(args) if args
     @mechanic_feedback_text = text
+    @mechanic_feedback_started_at = Kernel.tick_count
     @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FRAMES
   end
 

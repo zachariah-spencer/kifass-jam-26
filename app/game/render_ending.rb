@@ -61,7 +61,7 @@ class Game
 
   def final_text_character_count
     elapsed = @ending_phase == :final_text ? ENDING_CARD_FADE_FRAMES + ending_phase_elapsed : ending_phase_elapsed
-    elapsed.idiv(MESSAGE_CHARACTER_INTERVAL) + 1
+    elapsed.idiv(ENDING_MESSAGE_CHARACTER_INTERVAL) + 1
   end
 
   def final_text_lines_length
@@ -79,7 +79,7 @@ class Game
   end
 
   def final_text_complete_at
-    (final_text_lines_length - 1) * MESSAGE_CHARACTER_INTERVAL
+    (final_text_lines_length - 1) * ENDING_MESSAGE_CHARACTER_INTERVAL
   end
 
   def visible_lines_for_character_count lines, character_count

@@ -9,6 +9,7 @@ class Game
   PLAY_AREA = { x: G[3], y: G[3], w: G[124], h: G[76] }
   MESSAGE_DELAY_FRAMES = 3.seconds
   MESSAGE_CHARACTER_INTERVAL = 0.05.seconds
+  ENDING_MESSAGE_CHARACTER_INTERVAL = MESSAGE_CHARACTER_INTERVAL * 2
   FOOTSTEP_SOUND_PATH = "sounds/footstep.wav"
   FOOTSTEP_INTERVAL_FRAMES = 0.45.seconds
   FOOTSTEP_GAIN = 0.9
@@ -21,7 +22,7 @@ class Game
   SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
   SCRAMBLE_GAIN = 1.0
   NOTIFICATION_SOUND_PATH = "sounds/notification.wav"
-  NOTIFICATION_GAIN = 1.0
+  NOTIFICATION_GAIN = 100.0
   ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
   ALTAR_CRASHING_GAIN = 50.0
   NAMELESS_SOUND_PATHS = [
@@ -93,7 +94,8 @@ class Game
   MIRROR_SAFE_PATH_SURGE_GLINT_SIZE = 18
   BELL_RING_PULSE_FRAMES = 1.0.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
-  MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES
+  MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES + 2.0.seconds
+  MECHANIC_FEEDBACK_FADE_FRAMES = 0.35.seconds
   LEARNED_WORD_MESSAGES = {
     "BELL" => BELL_TOOLTIP_TEXT,
     "KEY" => "You hear the clanging of metal gates opening nearby.",
@@ -175,6 +177,7 @@ class Game
     @interaction_scramble_sound_played = false
     @interaction_visible_character_count = 0
     @mechanic_feedback_text = nil
+    @mechanic_feedback_started_at = nil
     @mechanic_feedback_until = nil
     @pointer_gesture = nil
     @touch_gestures = {}
@@ -210,6 +213,7 @@ class Game
     @ending_title_corruptor = nil
     @ending_title_started_at = nil
     @ending_final_text_visible_character_count = 0
+    @final_sacrifice_music_stopped = false
   end
 
   def build_rooms

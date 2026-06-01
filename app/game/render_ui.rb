@@ -71,19 +71,34 @@ class Game
   end
 
   def render_mechanic_feedback args
-    return unless @mechanic_feedback_text && @mechanic_feedback_until
+    return unless @mechanic_feedback_text && @mechanic_feedback_started_at && @mechanic_feedback_until
     return if Kernel.tick_count >= @mechanic_feedback_until
 
     lines = @mechanic_feedback_text.wrapped_lines(76)
     return if lines.empty?
 
     outputs = args.outputs.primitives
-    panel = { x: 286, y: 86, w: 708, h: 24 + lines.length * 24 }
-    outputs << panel.merge(**Render.color(:stone), a: 128, primitive_marker: :solid)
-    outputs << panel.merge(**Render.color(:ember), a: 220, primitive_marker: :border)
+    alpha_scale = mechanic_feedback_alpha_scale
+    panel = { x: 286, y: (Grid.h - (24 + lines.length * 24)) / 2, w: 708, h: 24 + lines.length * 24 }
+    outputs << panel.merge(**Render.color(:stone), a: (128 * alpha_scale).to_i, primitive_marker: :solid)
+    outputs << panel.merge(**Render.color(:ember), a: (220 * alpha_scale).to_i, primitive_marker: :border)
     lines.each_with_index do |line, index|
-      outputs << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1).merge(primitive_marker: :label)
+      outputs << Render.label(640, panel[:y] + panel[:h] - 17 - index * 24, line, :ember, size_enum: 0, alignment_enum: 1, a: (255 * alpha_scale).to_i).merge(primitive_marker: :label)
     end
+  end
+
+  def mechanic_feedback_alpha_scale
+    elapsed = Kernel.tick_count - @mechanic_feedback_started_at
+    remaining = @mechanic_feedback_until - Kernel.tick_count
+    fade_frames = [MECHANIC_FEEDBACK_FADE_FRAMES, MECHANIC_FEEDBACK_FRAMES / 2].min
+
+    if elapsed < fade_frames
+      elapsed.to_f / fade_frames
+    elsif remaining < fade_frames
+      remaining.to_f / fade_frames
+    else
+      1
+    end.clamp(0, 1)
   end
 
   def render_learned_words args

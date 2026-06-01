@@ -1,9 +1,13 @@
 class RootScene
   SCENE_FADE_OUT_FRAMES = 8
   SCENE_FADE_IN_FRAMES = 8
-  MUSIC_GAIN = 1.0
+  MUSIC_GAIN = 0.5
   MUSIC_CROSSFADE_FRAMES = 1.5.seconds
   MUSIC_KEYS = [:bg_music_a, :bg_music_b]
+  CHASE_MUSIC_KEY = :bg_brokenbells
+  CHASE_MUSIC_PATH = "sounds/bg_brokenbells.ogg"
+  CHASE_MUSIC_GAIN = 1.0
+  CHASE_MUSIC_FADE_FRAMES = 0.25.seconds
   MENU_MUSIC_PATH = "sounds/bg_menu.ogg"
   ATMOSPHERE_MUSIC_PATH = "sounds/bg_atmosphere.ogg"
   SCENE_MUSIC = {
@@ -92,6 +96,12 @@ class RootScene
   end
 
   def update_music
+    if @game.final_sacrifice_music_stopped?
+      stop_music
+      stop_chase_music
+      return
+    end
+
     desired_input = SCENE_MUSIC[args.state.scene]
     return unless desired_input
 
@@ -100,6 +110,7 @@ class RootScene
     start_music(desired_input) unless active_music
     crossfade_music(desired_input) if args.state.current_music_input != desired_input
     update_music_crossfade
+    update_chase_music
   end
 
   def start_music input
@@ -147,6 +158,80 @@ class RootScene
 
   def active_music
     args.audio[args.state.active_music_key]
+  end
+
+  def stop_music
+    MUSIC_KEYS.each { |key| args.audio.delete(key) }
+    args.state.current_music_input = nil
+    args.state.previous_music_key = nil
+    args.state.music_crossfade_started_at = nil
+  end
+
+  def update_chase_music
+    if @game.player_chased?
+      start_chase_music unless chase_music
+      set_chase_music_fade_direction(:in)
+    elsif chase_music
+      set_chase_music_fade_direction(:out)
+    else
+      clear_chase_music_state
+      return
+    end
+
+    update_chase_music_fade
+  end
+
+  def start_chase_music
+    args.audio[CHASE_MUSIC_KEY] = {
+      input: CHASE_MUSIC_PATH,
+      looping: true,
+      gain: 0.0
+    }
+    args.state.chase_music_fade_started_at = Kernel.tick_count
+    args.state.chase_music_fade_direction = :in
+    args.state.chase_music_fade_from_gain = 0.0
+  end
+
+  def set_chase_music_fade_direction direction
+    return if args.state.chase_music_fade_direction == direction
+
+    args.state.chase_music_fade_from_gain = chase_music&.gain || 0.0
+    args.state.chase_music_fade_started_at = Kernel.tick_count
+    args.state.chase_music_fade_direction = direction
+  end
+
+  def update_chase_music_fade
+    music = chase_music
+    return unless music
+
+    fade_started_at = args.state.chase_music_fade_started_at || Kernel.tick_count
+    progress = ((Kernel.tick_count - fade_started_at).to_f / CHASE_MUSIC_FADE_FRAMES).clamp(0.0, 1.0)
+
+    from_gain = args.state.chase_music_fade_from_gain || music.gain || 0.0
+    to_gain = args.state.chase_music_fade_direction == :out ? 0.0 : CHASE_MUSIC_GAIN
+    music.gain = (from_gain + (to_gain - from_gain) * progress).clamp(0.0, CHASE_MUSIC_GAIN)
+    return if progress < 1.0
+
+    if args.state.chase_music_fade_direction == :out
+      stop_chase_music
+    else
+      args.state.chase_music_fade_from_gain = music.gain
+    end
+  end
+
+  def chase_music
+    args.audio[CHASE_MUSIC_KEY]
+  end
+
+  def stop_chase_music
+    args.audio.delete(CHASE_MUSIC_KEY)
+    clear_chase_music_state
+  end
+
+  def clear_chase_music_state
+    args.state.chase_music_fade_started_at = nil
+    args.state.chase_music_fade_direction = nil
+    args.state.chase_music_fade_from_gain = nil
   end
 
   def inactive_music_key

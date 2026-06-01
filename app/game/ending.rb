@@ -21,6 +21,14 @@ class Game
     @enemies.each(&:start_final_fade!)
   end
 
+  def stop_music_for_final_sacrifice!
+    @final_sacrifice_music_stopped = true
+  end
+
+  def final_sacrifice_music_stopped?
+    @final_sacrifice_music_stopped && ending_sequence_triggered?
+  end
+
   def update_ending_sequence args
     update_interaction_text(args, true)
     interactables.each { |interactable| interactable.update(args) }
@@ -140,7 +148,7 @@ class Game
     return unless @interaction_text
 
     visible_character_count = visible_interaction_text.length
-    if visible_character_count > (@interaction_visible_character_count || 0) && visible_character_count.odd?
+    if play_typing_sound_for_character_count?(visible_character_count, @interaction_visible_character_count || 0)
       play_typing_sound(args)
     end
     @interaction_visible_character_count = visible_character_count
@@ -166,10 +174,17 @@ class Game
     return unless [:final_text_fade_in, :final_text].include?(@ending_phase)
 
     visible_character_count = final_text_character_count.clamp(0, final_text_lines_length)
-    if visible_character_count > (@ending_final_text_visible_character_count || 0) && visible_character_count.odd?
+    if visible_character_count > (@ending_final_text_visible_character_count || 0)
       play_typing_sound(args)
     end
     @ending_final_text_visible_character_count = visible_character_count
+  end
+
+  def play_typing_sound_for_character_count? visible_character_count, previous_character_count
+    return false unless visible_character_count > previous_character_count
+    return true if ending_sequence_triggered?
+
+    visible_character_count.odd?
   end
 
   def clear_interaction_text
@@ -188,8 +203,12 @@ class Game
     return "" unless @interaction_text && @interaction_started_at
 
     elapsed = Kernel.tick_count - @interaction_started_at
-    character_count = elapsed.idiv(MESSAGE_CHARACTER_INTERVAL) + 1
+    character_count = elapsed.idiv(interaction_text_character_interval) + 1
     current_interaction_text[0, character_count.clamp(0, @interaction_text.length)]
+  end
+
+  def interaction_text_character_interval
+    ending_sequence_triggered? ? ENDING_MESSAGE_CHARACTER_INTERVAL : MESSAGE_CHARACTER_INTERVAL
   end
 
   def current_interaction_text

@@ -57,6 +57,10 @@ class Game
     @enemies.find_all { |enemy| enemy.room_id == @current_room_id }
   end
 
+  def player_chased?
+    current_enemies.any?(&:chase_music_active?)
+  end
+
   def enemy_speed_multiplier enemy
     multiplier = monster_speed_multiplier
     multiplier *= SANCTUM_ENEMY_SPEED_MULTIPLIER if enemy.room_id == :sanctum

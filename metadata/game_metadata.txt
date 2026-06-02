@@ -7,7 +7,7 @@ devid=zachariah-spencer
 devtitle=Zingus
 gameid=epithet
 gametitle=Epithet
-version=1.0
+version=1.1
 icon=metadata/icon.png
 
 # ==============================================

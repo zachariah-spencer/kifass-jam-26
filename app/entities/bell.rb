@@ -23,8 +23,7 @@ class Bell < Interactable
       tile_x: 0,
       tile_y: 0,
       tile_w: SPRITE_SIZE,
-      tile_h: SPRITE_SIZE,
-      a: sacrificed? ? 95 : 255
+      tile_h: SPRITE_SIZE
     )
   end
 end

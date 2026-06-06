@@ -235,7 +235,7 @@ class Game
   def render_locked_gate gate_id, gate, outputs, path:, frame_w:, frame_h:, reverse_frames: false
     frame = update_key_gate_frame(gate_id)
 
-    gate_rect = @camera.screen_rect(gate)
+    gate_rect = key_gate_slam_rect(@camera.screen_rect(gate))
     sprite_frame = reverse_frames ? LOCKED_GATE_FRAME_COUNT - 1 - frame : frame
     outputs.sprites << gate_rect.merge(
       path: path,
@@ -244,6 +244,7 @@ class Game
       tile_w: frame_w,
       tile_h: frame_h
     )
+    render_key_gate_power_up(gate_rect, outputs)
   end
 
   def render_archive_safe_paths args, outputs = args.outputs
@@ -251,6 +252,12 @@ class Game
     return unless @learned_words.include?("MIRROR") || @sacrificed_words.include?("MIRROR")
 
     pulse = Math.sin(Kernel.tick_count * Math::PI * 2 / 120)
+    mirror_sacrifice_effect = sacrifice_effect("MIRROR", SACRIFICE_MIRROR_FLICKER_FRAMES)
+    if mirror_sacrifice_effect
+      render_mirror_sacrifice_flicker(outputs, mirror_sacrifice_effect)
+      return
+    end
+
     if @sacrificed_words.include?("MIRROR")
       render_env_tiles(
         outputs,
@@ -258,16 +265,63 @@ class Game
         alpha: (24 + pulse * 8).to_i
       )
     else
+      base_alpha = (70 + pulse * 24).to_i
       render_env_tiles(
         outputs,
         cached_env_tile_cells(:archive_safe_paths) { archive_safe_path_cells },
-        alpha: (125 + pulse * 45).to_i
+        alpha: mirror_safe_path_alpha(base_alpha)
       )
     end
   end
 
+  def render_key_gate_power_up gate_rect, outputs
+    progress = learned_word_effect_progress("KEY", LEARNED_KEY_EFFECT_FRAMES)
+    return unless progress
+
+    pulse = Math.sin(progress * Math::PI)
+    scale = 1.0.lerp(2.5, pulse)
+    alpha = (230 * (1.0 - progress)).to_i
+    overlay = scaled_rect(gate_rect, scale)
+    outputs.sprites << overlay.merge(path: :solid, r: 255, g: 255, b: 255, a: (alpha * 0.22).to_i)
+    outputs.borders << overlay.merge(r: 255, g: 255, b: 255, a: alpha)
+  end
+
+  def key_gate_slam_rect gate_rect
+    effect = sacrifice_effect("KEY", SACRIFICE_KEY_SLAM_FRAMES)
+    return gate_rect unless effect
+
+    pulse = Math.sin(effect[:progress] * Math::PI)
+    jitter = Math.sin(Kernel.tick_count * Math::PI * 2 / 3) * 5 * (1.0 - effect[:progress])
+    rect = scaled_rect(gate_rect, 1.0 + pulse * 0.08)
+    rect.merge(x: rect[:x] + jitter)
+  end
+
+  def mirror_safe_path_alpha base_alpha
+    total_frames = LEARNED_MIRROR_EFFECT_IN_FRAMES + LEARNED_MIRROR_EFFECT_SETTLE_FRAMES
+    progress = learned_word_effect_progress("MIRROR", total_frames)
+    return base_alpha unless progress
+
+    in_progress = LEARNED_MIRROR_EFFECT_IN_FRAMES.to_f / total_frames
+    if progress <= in_progress
+      local_progress = (progress / in_progress).clamp(0, 1)
+      80.lerp(135, local_progress).to_i
+    else
+      local_progress = ((progress - in_progress) / (1.0 - in_progress)).clamp(0, 1)
+      135.lerp(base_alpha, local_progress).to_i
+    end
+  end
+
+  def scaled_rect rect, scale
+    {
+      x: rect[:x] + rect[:w] * (1.0 - scale) / 2,
+      y: rect[:y] + rect[:h] * (1.0 - scale) / 2,
+      w: rect[:w] * scale,
+      h: rect[:h] * scale
+    }
+  end
+
   def archive_safe_path_cells
-    archive_safe_paths.flat_map { |path| rect_fill_cells(path) }.uniq
+    @archive_safe_path_cells ||= archive_safe_paths.flat_map { |path| rect_fill_cells(path) }.uniq
   end
 
   def sacrificed_mirror_safe_path_cells
@@ -280,5 +334,33 @@ class Game
 
   def sacrificed_mirror_cell_seed col, row
     ((col * 73_856_093) ^ (row * 19_349_663) ^ 0x4d1_220).abs
+  end
+
+  def render_mirror_sacrifice_flicker outputs, effect
+    progress = effect[:progress]
+    tick_gate = Kernel.tick_count.idiv(4)
+    alpha = (160 * (1.0 - progress)).to_i.clamp(18, 180)
+    visible = env_visible_rect(ENV_TILE_SIZE)
+    transform = env_render_transform
+    layer = cached_env_tile_cells(:archive_safe_paths) { archive_safe_path_cells }
+
+    env_layer_render_cells(layer).each do |cell|
+      next unless env_rect_visible?(cell, visible)
+
+      col = (cell[:x] / ENV_TILE_SIZE).floor
+      row = (cell[:y] / ENV_TILE_SIZE).floor
+      seed = sacrificed_mirror_cell_seed(col, row)
+      cutoff = (seed % 1000) / 1000.0
+      next unless cutoff > progress || (seed + tick_gate) % 5 == 0
+
+      outputs.sprites << {
+        x: (cell[:x] - transform[:x]) * transform[:zoom] + transform[:shake_x],
+        y: (cell[:y] - transform[:y]) * transform[:zoom] + transform[:shake_y],
+        w: cell[:w] * transform[:zoom],
+        h: cell[:h] * transform[:zoom],
+        path: cell[:path],
+        a: alpha
+      }
+    end
   end
 end

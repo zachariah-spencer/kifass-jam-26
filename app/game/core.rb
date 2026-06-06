@@ -22,17 +22,21 @@ class Game
   ENDING_TITLE_CORRUPT_AFTER_FRAMES = 1.1.seconds
   RESET_HINTS = [
     "A name left behind changes the shape of the maze...",
+    "A name left at the altar dissociates that item from reality..."
     "Every offering opens something while closing one's mind off from something else...",
     "Forgetting is not failure. It is information...",
-    "Something ancient and nameless hunts those trapped here..."
+    "Something ancient and nameless hunts those trapped here...",
+    "Without the mirror, only fragments of the safe path remain...",
+    "Without the bell, they gain speed and numbers...",
+    "Without the key, that which hunts you freely roams the inner chambers...",
   ]
   RESET_FADE_OUT_FRAMES = 0.3.seconds
   RESET_HINT_FADE_FRAMES = 0.35.seconds
   RESET_HINT_HOLD_FRAMES = 2.seconds
   RESET_FADE_IN_FRAMES = 0.35.seconds
   ARCHIVE_PATH_RESET_FADE_FRAMES = 0.2.seconds
-  ARCHIVE_OFF_PATH_WARNING_FRAMES = 0.5.seconds
-  ARCHIVE_OFF_PATH_WARNING_TEXT = "You begin slipping into the void..."
+  ARCHIVE_OFF_PATH_WARNING_FRAMES = 0.25.seconds
+  ARCHIVE_OFF_PATH_WARNING_TEXT = ""
   ALTAR_PANEL = { x: 430, y: 190, w: 420, h: 330 }
   ALTAR_WORD_ROW_H = 42
   ROOM_FADE_OUT_FRAMES = 8
@@ -42,11 +46,28 @@ class Game
   POINTER_TAP_MAX_FRAMES = 0.25.seconds
   ARCHIVE_SAFE_PATH_TOLERANCE = S.value(18)
   ARCHIVE_SAFE_PATH_EXTRA_WIDTH = S.value(56)
-  BELL_STUN_FRAMES = 3.seconds
-  BELL_COOLDOWN_FRAMES = BELL_STUN_FRAMES
+  BELL_COOLDOWN_FRAMES = 3.seconds
+  BELL_STUN_FRAMES = 1.seconds
   BELL_FAILED_PULSE_FRAMES = 0.1.seconds
+  LEARNED_LAMP_EFFECT_IN_FRAMES = 0.12.seconds
+  LEARNED_LAMP_EFFECT_SETTLE_FRAMES = 0.9.seconds
+  LEARNED_LAMP_EFFECT_FRAMES = LEARNED_LAMP_EFFECT_IN_FRAMES + LEARNED_LAMP_EFFECT_SETTLE_FRAMES
+  LEARNED_LAMP_LIGHT_SIZE = 2048
+  LEARNED_LAMP_PEAK_LIGHT_SIZE = 5000
+  SACRIFICED_LAMP_LIGHT_SIZE = 1096
+  SACRIFICED_LAMP_EFFECT_FRAMES = 0.5.seconds
+  SACRIFICE_LAMP_GUTTER_FRAMES = 0.6.seconds
+  SACRIFICE_KEY_SLAM_FRAMES = 0.35.seconds
+  SACRIFICE_MIRROR_FLICKER_FRAMES = 0.7.seconds
+  SACRIFICE_BELL_MONSTER_FLARE_FRAMES = 0.5.seconds
+  LEARNED_KEY_EFFECT_FRAMES = 1.0.seconds
+  LEARNED_MIRROR_EFFECT_IN_FRAMES = 0.1.seconds
+  LEARNED_MIRROR_EFFECT_SETTLE_FRAMES = 1.0.seconds
+  MIRROR_SAFE_PATH_SURGE_GLOW_SIZE = 92
+  MIRROR_SAFE_PATH_SURGE_GLINT_SIZE = 18
+  BELL_RING_PULSE_FRAMES = 1.0.seconds
   BELL_TOOLTIP_TEXT = "Press E or click empty space to ring the bell and stun the Nameless Thing."
-  MECHANIC_FEEDBACK_FRAMES = BELL_STUN_FRAMES
+  MECHANIC_FEEDBACK_FRAMES = BELL_COOLDOWN_FRAMES
   LEARNED_WORD_MESSAGES = {
     "BELL" => BELL_TOOLTIP_TEXT,
     "KEY" => "You hear the clanging of metal gates opening nearby.",
@@ -54,10 +75,10 @@ class Game
     "LAMP" => "The dark is thrust away from you, illuminating the space."
   }
   SACRIFICE_CONSEQUENCE_MESSAGES = {
-    "BELL" => "The silence is deafening. Nothing can stop what hunts you.",
-    "KEY" => "Gates forget what their locks were for... Something else remembers the openings...",
-    "MIRROR" => "The reflected path fades from memory.",
-    "LAMP" => "The dark invades the space."
+    "BELL" => "The silence is deafening. Nothing can stop what hunts you in the maze.",
+    "KEY" => "Gates forget what their locks were for... Something else remembers the openings to the sanctum...",
+    "MIRROR" => "A chill runs down your spine. The reflected path fades from memory.",
+    "LAMP" => "You shudder as darkness invades the space."
   }
   LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate.png"
   FINAL_LOCKED_GATE_SPRITE_PATH = "sprites/locked_gate_final.png"
@@ -109,6 +130,7 @@ class Game
     @learned_word_sources = {}
     @sacrificed_words = []
     @sacrificed_object_ids = []
+    @forgotten_word_corruptors = {}
     @altar_open = false
     @active_altar = nil
     @altar_reinforcement_shown = false
@@ -132,12 +154,17 @@ class Game
     @pointer_tap = nil
     @pointer_drag_vector = nil
     @env_tile_cache = {}
+    @archive_safe_path_cells = nil
     @sacrificed_mirror_safe_path_cells = nil
     @archive_off_path_started_at = nil
     @key_gate_states = {}
     reset_key_gate_states
     @bell_last_used_at = nil
     @bell_failed_pulse_until = nil
+    @learned_word_effects = {}
+    @sacrifice_effects = {}
+    @player_light_size_effect = nil
+    @bell_ring_pulses = []
     @ending_monsters_fade_started_at = nil
     @ending_sequence_triggered = false
     @ending_phase = nil
@@ -324,6 +351,8 @@ class Game
       @player.y = player_position[:y]
     end
     @env_tile_cache = {}
+    @archive_safe_path_cells = nil
+    @sacrificed_mirror_safe_path_cells = nil
   end
 
   def current_room

@@ -280,8 +280,8 @@
       "objects": [
         {
           "type": "mirror",
-          "col": 17,
-          "row": 49,
+          "col": 21,
+          "row": 37,
           "id": "archive_mirror"
         },
         {
@@ -348,9 +348,27 @@
         },
         {
           "col": 78,
-          "row": 34,
+          "row": 13,
           "w_cols": 2,
-          "h_rows": 16
+          "h_rows": 4
+        },
+        {
+          "col": 78,
+          "row": 29,
+          "w_cols": 2,
+          "h_rows": 21
+        },
+        {
+          "col": 69,
+          "row": 48,
+          "w_cols": 9,
+          "h_rows": 2
+        },
+        {
+          "col": 69,
+          "row": 50,
+          "w_cols": 2,
+          "h_rows": 12
         },
         {
           "col": 78,
@@ -359,9 +377,21 @@
           "h_rows": 20
         },
         {
+          "col": 69,
+          "row": 65,
+          "w_cols": 2,
+          "h_rows": 8
+        },
+        {
           "col": 5,
           "row": 72,
-          "w_cols": 73,
+          "w_cols": 64,
+          "h_rows": 1
+        },
+        {
+          "col": 71,
+          "row": 72,
+          "w_cols": 7,
           "h_rows": 1
         },
         {
@@ -585,20 +615,14 @@
         {
           "col": 52,
           "row": 53,
-          "w_cols": 26,
-          "h_rows": 2
-        },
-        {
-          "col": 52,
-          "row": 55,
           "w_cols": 8,
-          "h_rows": 5
+          "h_rows": 7
         },
         {
           "col": 72,
-          "row": 55,
+          "row": 53,
           "w_cols": 6,
-          "h_rows": 14
+          "h_rows": 16
         },
         {
           "col": 38,
@@ -665,14 +689,14 @@
         {
           "id": "archive",
           "rect": {
-            "col": 78,
-            "row": 50,
+            "col": 69,
+            "row": 62,
             "w_cols": 2,
             "h_rows": 3
           },
           "sprite_rect": {
-            "col": 78,
-            "row": 50,
+            "col": 69,
+            "row": 62,
             "w_cols": 2,
             "h_rows": 3
           },

@@ -1,6 +1,9 @@
 class Game
   ENEMY_RANDOM_SPAWN_ATTEMPTS = 80
   ENEMY_PLAYER_SPAWN_BUFFER = S.value(384)
+  BELL_SACRIFICE_OFFSCREEN_SPAWN_ATTEMPTS = 8
+  BELL_SACRIFICE_OFFSCREEN_MARGIN = S.value(32)
+  BELL_SACRIFICE_FORCED_CHASE_FRAMES = 3.seconds
   SANCTUM_LEFT_MAZE_SPAWN_AREA = { x: G[22], y: G[4], w: G[40], h: G[74] }
   SANCTUM_ENEMY_SPEED_MULTIPLIER = 0.75
 
@@ -149,6 +152,7 @@ class Game
     end
 
     @bell_last_used_at = Kernel.tick_count
+    add_bell_ring_pulse(@player.center)
     current_enemies.each { |enemy| enemy.stun!(BELL_STUN_FRAMES) }
   end
 
@@ -211,10 +215,58 @@ class Game
   end
 
   def ensure_bell_sacrifice_enemy!
-    return if @enemies.any? { |enemy| enemy.room_id == :archive && enemy.id == :archive_bell_sacrifice }
+    enemy = @enemies.find { |candidate| candidate.id == :archive_bell_sacrifice }
+    return enemy if enemy
 
     spawn = archive_second_enemy_spawn(enemy_rects_for_room(:archive))
-    @enemies << NamelessThing.new(:archive, spawn[:x], spawn[:y], :archive_bell_sacrifice)
+    enemy = NamelessThing.new(:archive, spawn[:x], spawn[:y], :archive_bell_sacrifice)
+    @enemies << enemy
+    enemy
+  end
+
+  def handle_bell_sacrifice_enemies!
+    archive_enemies = ensure_archive_bell_sacrifice_enemies!
+    return unless @current_room_id == :archive
+
+    teleport_archive_bell_sacrifice_enemies_near_screen!(archive_enemies)
+  end
+
+  def ensure_archive_bell_sacrifice_enemies!
+    primary_enemy = ensure_archive_primary_enemy!
+    bell_enemy = ensure_bell_sacrifice_enemy!
+
+    reset_enemy_to_archive!(bell_enemy, archive_second_enemy_spawn(enemy_rects_for_room_except(:archive, bell_enemy))) if bell_enemy.room_id != :archive
+    [primary_enemy, bell_enemy].compact
+  end
+
+  def ensure_archive_primary_enemy!
+    enemy = @enemies.find { |candidate| candidate.room_id == :archive && candidate.id != :archive_bell_sacrifice }
+    return enemy if enemy
+
+    spawn = archive_enemy_spawn(enemy_rects_for_room(:archive))
+    enemy = NamelessThing.new(:archive, spawn[:x], spawn[:y], nil)
+    @enemies << enemy
+    enemy
+  end
+
+  def teleport_archive_bell_sacrifice_enemies_near_screen! enemies
+    room = @rooms[:archive]
+    return unless room
+
+    placed_rects = []
+    sides = shuffled_bell_sacrifice_sides
+    enemies.each_with_index do |enemy, index|
+      spawn = bell_sacrifice_offscreen_spawn(room, enemy, placed_rects, sides[index % sides.length])
+      next unless spawn
+
+      reset_enemy_to_archive!(enemy, spawn)
+      enemy.force_chase!(BELL_SACRIFICE_FORCED_CHASE_FRAMES)
+      placed_rects << enemy.rect
+    end
+  end
+
+  def reset_enemy_to_archive! enemy, spawn
+    enemy.reset!(:archive, spawn) if enemy && spawn
   end
 
   def ensure_sanctum_enemy!
@@ -274,6 +326,118 @@ class Game
     nil
   end
 
+  def bell_sacrifice_offscreen_spawn room, enemy, extra_blockers = [], preferred_side = nil
+    blockers = room_collision_barriers(room) + enemy_rects_for_room_except(room.id, enemy) + extra_blockers
+    bell_sacrifice_side_order(preferred_side).each do |side|
+      BELL_SACRIFICE_OFFSCREEN_SPAWN_ATTEMPTS.times do
+        rect = bell_sacrifice_screen_edge_rect(side)
+        next unless valid_bell_sacrifice_spawn_rect?(room, rect, blockers)
+
+        return rect_position(rect)
+      end
+    end
+
+    bell_sacrifice_side_order(preferred_side).each do |side|
+      BELL_SACRIFICE_OFFSCREEN_SPAWN_ATTEMPTS.times do
+        rect = bell_sacrifice_offscreen_rect(side)
+        next unless valid_bell_sacrifice_spawn_rect?(room, rect, blockers)
+
+        return rect_position(rect)
+      end
+    end
+
+    nil
+  end
+
+  def bell_sacrifice_side_order preferred_side
+    sides = shuffled_bell_sacrifice_sides
+    return sides unless preferred_side
+
+    [preferred_side] + sides.reject { |side| side == preferred_side }
+  end
+
+  def shuffled_bell_sacrifice_sides
+    sides = [:left, :right, :top, :bottom]
+    sides.length.times do |index|
+      swap_index = index + rand(sides.length - index)
+      sides[index], sides[swap_index] = sides[swap_index], sides[index]
+    end
+    sides
+  end
+
+  def bell_sacrifice_offscreen_rect side
+    margin = BELL_SACRIFICE_OFFSCREEN_MARGIN
+    visible = {
+      x: @camera.x,
+      y: @camera.y,
+      w: @camera.visible_w,
+      h: @camera.visible_h
+    }
+    min_x = visible[:x].to_i
+    max_x = (visible[:x] + visible[:w] - NamelessThing::SIZE).to_i
+    min_y = visible[:y].to_i
+    max_y = (visible[:y] + visible[:h] - NamelessThing::SIZE).to_i
+
+    case side
+    when :left
+      { x: visible[:x] - NamelessThing::SIZE - margin, y: rand_between(min_y, max_y), w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    when :right
+      { x: visible[:x] + visible[:w] + margin, y: rand_between(min_y, max_y), w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    when :top
+      { x: rand_between(min_x, max_x), y: visible[:y] + visible[:h] + margin, w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    else
+      { x: rand_between(min_x, max_x), y: visible[:y] - NamelessThing::SIZE - margin, w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    end
+  end
+
+  def bell_sacrifice_screen_edge_rect side
+    visible = {
+      x: @camera.x,
+      y: @camera.y,
+      w: @camera.visible_w,
+      h: @camera.visible_h
+    }
+    inset = BELL_SACRIFICE_OFFSCREEN_MARGIN
+    min_x = (visible[:x] + inset).to_i
+    max_x = (visible[:x] + visible[:w] - NamelessThing::SIZE - inset).to_i
+    min_y = (visible[:y] + inset).to_i
+    max_y = (visible[:y] + visible[:h] - NamelessThing::SIZE - inset).to_i
+
+    case side
+    when :left
+      { x: visible[:x] + inset, y: rand_between(min_y, max_y), w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    when :right
+      { x: visible[:x] + visible[:w] - NamelessThing::SIZE - inset, y: rand_between(min_y, max_y), w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    when :top
+      { x: rand_between(min_x, max_x), y: visible[:y] + visible[:h] - NamelessThing::SIZE - inset, w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    else
+      { x: rand_between(min_x, max_x), y: visible[:y] + inset, w: NamelessThing::SIZE, h: NamelessThing::SIZE }
+    end
+  end
+
+  def rand_between min, max
+    min, max = max, min if min > max
+    min + rand(max - min + 1)
+  end
+
+  def random_enemy_spawn_in_room room, blockers
+    return nil unless rect_can_fit_enemy?(room.play_area)
+
+    ENEMY_RANDOM_SPAWN_ATTEMPTS.times do
+      rect = random_enemy_rect_in(room.play_area)
+      return rect_position(rect) if valid_enemy_spawn_rect?(room, rect, blockers)
+    end
+
+    nil
+  end
+
+  def valid_bell_sacrifice_spawn_rect? room, rect, blockers
+    return false unless rect_inside_rect?(rect, room.play_area)
+    return false if blockers.any? { |blocker| rects_intersect?(rect, blocker) }
+
+    true
+  end
+
   def rect_can_fit_enemy? rect
     rect[:w] >= NamelessThing::SIZE && rect[:h] >= NamelessThing::SIZE
   end
@@ -330,6 +494,10 @@ class Game
 
   def enemy_rects_for_room room_id
     @enemies.find_all { |enemy| enemy.room_id == room_id }.map(&:rect)
+  end
+
+  def enemy_rects_for_room_except room_id, excluded_enemy
+    @enemies.find_all { |enemy| enemy.room_id == room_id && enemy != excluded_enemy }.map(&:rect)
   end
 
   def expanded_archive_safe_path path

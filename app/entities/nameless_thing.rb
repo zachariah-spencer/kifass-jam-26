@@ -13,6 +13,9 @@ class NamelessThing
   CHASE_SPEED = 2.15 * WorldScale::FACTOR
   CHASE_RADIUS = WorldScale.value(350)
   PATROL_TARGET_DISTANCE = WorldScale.value(18)
+  STUN_BLINK_FRAME_HOLD = 5
+  STUN_TEAL_BLUE_TINT = { r: 0, g: 205, b: 220 }
+  STUN_WHITE_TINT = { r: 255, g: 255, b: 255 }
 
   attr_accessor :x, :y, :room_id
   attr_reader :id, :w, :h, :state
@@ -26,11 +29,13 @@ class NamelessThing
     @h = SIZE
     @state = :patrol
     @patrol_index = 0
+    @stunned_started_at = nil
     @stunned_until = 0
     @animation_started_at = Kernel.tick_count
     @light_fade_started_at = nil
     @light_fade_direction = nil
     @final_fade_started_at = nil
+    @forced_chase_until = nil
   end
 
   def rect
@@ -49,7 +54,7 @@ class NamelessThing
       return nil
     end
 
-    set_state(close_to_player?(player) ? :chase : :patrol)
+    set_state(forced_chase? || close_to_player?(player) ? :chase : :patrol)
 
     target = @state == :chase ? player.center : current_patrol_point(patrol_points)
     speed = @state == :chase ? CHASE_SPEED : PATROL_SPEED
@@ -63,19 +68,34 @@ class NamelessThing
     @y = spawn[:y]
     @state = :patrol
     @patrol_index = 0
+    @stunned_started_at = nil
     @stunned_until = 0
     @animation_started_at = Kernel.tick_count
     @light_fade_started_at = nil
     @light_fade_direction = nil
     @final_fade_started_at = nil
+    @forced_chase_until = nil
   end
 
   def stun! duration_frames
+    @stunned_started_at = Kernel.tick_count
     @stunned_until = [@stunned_until, Kernel.tick_count + duration_frames].max
   end
 
   def clear_stun!
+    @stunned_started_at = nil
     @stunned_until = 0
+  end
+
+  def force_chase! duration_frames = nil
+    @stunned_started_at = nil
+    @stunned_until = 0
+    @forced_chase_until = duration_frames ? Kernel.tick_count + duration_frames : nil
+    set_state(:chase)
+  end
+
+  def forced_chase?
+    @forced_chase_until && Kernel.tick_count < @forced_chase_until
   end
 
   def stunned?
@@ -84,6 +104,7 @@ class NamelessThing
 
   def start_final_fade!
     @final_fade_started_at ||= Kernel.tick_count
+    @stunned_started_at = nil
     @stunned_until = 0
     @state = :stunned
   end
@@ -97,7 +118,7 @@ class NamelessThing
     return if alpha <= 0
 
     enemy_rect = camera ? camera.screen_rect(rect) : rect
-    outputs.sprites << enemy_rect.merge(enemy_sprite).merge(a: alpha)
+    outputs.sprites << enemy_rect.merge(enemy_sprite).merge(stun_tint).merge(a: alpha)
   end
 
   def set_state next_state
@@ -130,6 +151,13 @@ class NamelessThing
       tile_w: FRAME_SIZE,
       tile_h: FRAME_SIZE
     }
+  end
+
+  def stun_tint
+    return {} unless stunned?
+
+    elapsed = Kernel.tick_count - (@stunned_started_at || Kernel.tick_count)
+    elapsed.idiv(STUN_BLINK_FRAME_HOLD).even? ? STUN_TEAL_BLUE_TINT : STUN_WHITE_TINT
   end
 
   def render_light args, outputs = args.outputs, camera = nil

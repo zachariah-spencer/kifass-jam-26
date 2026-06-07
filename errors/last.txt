@@ -1,17 +1,5 @@
-* EXCEPTION:
-* EXCEPTION: ~Runtime#add_to_require_queue~ failed for =app/game/core.rb=.
-* ERROR:
-** method_missing: TYPING_PITCH_MAX=
-** instance:       0
-** on class:       Integer
-** with modules:   [NumericDeprecated, ValueType, Comparable, PP::ObjectMixin, Kernel]
-** with values:    0
-** given args:     [[1.15]]
-** exception:      can't define singleton
-** backtrace:
-app/game/core.rb:19
-app/game/core.rb:1
-
+* EXCEPTION: non float value
 ** Backtrace:
-*** app/game/core.rb:19
-*** app/game/core.rb:1
+*** app/root_scene.rb:160:in render_transition
+*** app/root_scene.rb:48:in tick
+*** app/main.rb:13:in tick

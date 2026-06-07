@@ -1,5 +1,5 @@
 class Game
-  def interaction_text_for interactable
+  def interaction_text_for interactable, args = nil
     return nil unless interactable
     return interactable.sacrificed_interaction_text if interactable.word && @sacrificed_words.include?(interactable.word)
     return interactable.sacrificed_interaction_text if sacrificed_object?(interactable.id)
@@ -13,7 +13,7 @@ class Game
       start_key_gate_animation(:open) if interactable.word == "KEY"
       @player.light_size = LEARNED_LAMP_LIGHT_SIZE if interactable.word == "LAMP"
       trigger_learned_word_effect(interactable.word, interactable, previous_player_light_size)
-      show_mechanic_feedback(LEARNED_WORD_MESSAGES[interactable.word])
+      show_mechanic_feedback(LEARNED_WORD_MESSAGES[interactable.word], args)
     end
     @learned_object_ids << interactable.id
     @learned_word_sources[interactable.word] = interactable.id
@@ -92,13 +92,14 @@ class Game
     @active_altar.sacrifice! if @active_altar
     @camera.shake!
     close_altar
-    show_mechanic_feedback(SACRIFICE_CONSEQUENCE_MESSAGES[word])
+    show_mechanic_feedback(SACRIFICE_CONSEQUENCE_MESSAGES[word], args)
     set_interaction_text("You sacrificed #{word}.")
   end
 
-  def show_mechanic_feedback text
+  def show_mechanic_feedback text, args = nil
     return unless text
 
+    play_notification_sound(args) if args
     @mechanic_feedback_text = text
     @mechanic_feedback_until = Kernel.tick_count + MECHANIC_FEEDBACK_FRAMES
   end

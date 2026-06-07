@@ -39,8 +39,8 @@ class Interactable
     interaction_text
   end
 
-  def interact game
-    game.interaction_text_for(self)
+  def interact game, args = nil
+    game.interaction_text_for(self, args)
   end
 
   def sacrificed?

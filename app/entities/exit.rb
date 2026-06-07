@@ -19,7 +19,7 @@ class Exit < Interactable
     @unlocked_at = @locked ? nil : Kernel.tick_count
   end
 
-  def interact game
+  def interact game, args = nil
     return "The passage is sealed. The altar waits for a name." unless can_traverse?
 
     game.request_room_transition(@target_room_id, @target_spawn_id, self)

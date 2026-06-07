@@ -9,8 +9,8 @@ class NamelessThing
   CHASE_FRAME_HOLD = 5
   LIGHT_SIZE = 256
   LIGHT_FADE_FRAMES = Render::TRANSITION_FRAMES
-  PATROL_SPEED = 1.45 * WorldScale::FACTOR
-  CHASE_SPEED = 2.15 * WorldScale::FACTOR
+  PATROL_SPEED = 1.25 * WorldScale::FACTOR
+  CHASE_SPEED = 1.95 * WorldScale::FACTOR
   CHASE_RADIUS = WorldScale.value(350)
   PATROL_TARGET_DISTANCE = WorldScale.value(18)
   STUN_BLINK_FRAME_HOLD = 5

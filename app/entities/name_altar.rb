@@ -1,5 +1,5 @@
 class NameAltar < Altar
-  def interact game
+  def interact game, args = nil
     return "The altar is spent." if sacrificed?
     return "The final altar is cold. Two names must be taken first." unless game.sanctum_final_altar_active?
 

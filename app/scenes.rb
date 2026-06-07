@@ -176,7 +176,7 @@ class NameEntryScene < BaseScene
   def play_typing_sound_for_reveal sequence, visible_character_count
     instance_variable_name = :"@#{sequence}_visible_character_count"
     previous_character_count = instance_variable_get(instance_variable_name) || 0
-    @game.play_typing_sound(args) if visible_character_count > previous_character_count
+    @game.play_typing_sound(args) if visible_character_count > previous_character_count && visible_character_count.odd?
     instance_variable_set(instance_variable_name, visible_character_count)
   end
 

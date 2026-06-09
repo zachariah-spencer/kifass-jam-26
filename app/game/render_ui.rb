@@ -201,7 +201,7 @@ class Game
 
     sacrificeable_words.each_with_index do |word, index|
       rect = altar_word_rect(index)
-      outputs << rect.merge(**Render.color(:wall), primitive_marker: :solid)
+      # outputs << rect.merge(**Render.color(:wall), primitive_marker: :solid)
       outputs << rect.merge(**Render.color(:ember), primitive_marker: :border)
       outputs << Render.label(rect[:x] + 18, rect[:y] + 24, word, :ember, size_enum: 0).merge(primitive_marker: :label)
     end

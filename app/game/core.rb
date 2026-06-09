@@ -11,45 +11,45 @@ class Game
   MESSAGE_CHARACTER_INTERVAL = 0.05.seconds
   ENDING_MESSAGE_CHARACTER_INTERVAL = MESSAGE_CHARACTER_INTERVAL * 2
   FINAL_SACRIFICE_MESSAGE_CHARACTER_INTERVAL = ENDING_MESSAGE_CHARACTER_INTERVAL * 2
-  FOOTSTEP_SOUND_PATH = "sounds/footstep.wav"
+  FOOTSTEP_SOUND_PATH = "sounds/footstep.ogg"
   FOOTSTEP_INTERVAL_FRAMES = 0.45.seconds
   FOOTSTEP_GAIN = 0.9
   FOOTSTEP_PITCH_MIN = 0.85
   FOOTSTEP_PITCH_MAX = 1.1
-  TYPING_SOUND_PATH = "sounds/typing.wav"
+  TYPING_SOUND_PATH = "sounds/typing.ogg"
   TYPING_GAIN = 0.2
   TYPING_PITCH_MIN = 0.95
   TYPING_PITCH_MAX = 1.05
   BUTTON_CLICK_GAIN = 0.5
   BUTTON_CLICK_PITCH_MIN = 1.45
   BUTTON_CLICK_PITCH_MAX = 1.7
-  SCRAMBLE_SOUND_PATH = "sounds/scramble.wav"
+  SCRAMBLE_SOUND_PATH = "sounds/scramble.ogg"
   SCRAMBLE_GAIN = 1.0
-  NOTIFICATION_SOUND_PATH = "sounds/notification.wav"
+  NOTIFICATION_SOUND_PATH = "sounds/notification.ogg"
   NOTIFICATION_GAIN = 0.75
-  ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.wav"
+  ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.ogg"
   ALTAR_CRASHING_GAIN = 50.0
   WORD_EVENT_SOUND_GAIN = 1.0
   LAMP_WORD_EVENT_SOUND_GAIN = 5.0
   LEARNED_WORD_SOUND_PATHS = {
-    "BELL" => "sounds/bell_use.wav",
-    "KEY" => "sounds/gate_open.wav",
-    "MIRROR" => "sounds/mirror_learned.wav",
-    "LAMP" => "sounds/lamp_learned.wav"
+    "BELL" => "sounds/bell_use.ogg",
+    "KEY" => "sounds/gate_open.ogg",
+    "MIRROR" => "sounds/mirror_learned.ogg",
+    "LAMP" => "sounds/lamp_learned.ogg"
   }
   SACRIFICED_WORD_SOUND_PATHS = {
-    "BELL" => "sounds/bell_sacrificed.wav",
-    "KEY" => "sounds/gate_close.wav",
-    "MIRROR" => "sounds/mirror_sacrificed.wav",
-    "LAMP" => "sounds/lamp_sacrifice.wav"
+    "BELL" => "sounds/bell_sacrificed.ogg",
+    "KEY" => "sounds/gate_close.ogg",
+    "MIRROR" => "sounds/mirror_sacrificed.ogg",
+    "LAMP" => "sounds/lamp_sacrifice.ogg"
   }
   NAMELESS_SOUND_PATHS = [
-    "sounds/nameless_1.wav",
-    "sounds/nameless_2.wav",
-    "sounds/nameless_3.wav",
-    "sounds/nameless_4.wav"
+    "sounds/nameless_1.ogg",
+    "sounds/nameless_2.ogg",
+    "sounds/nameless_3.ogg",
+    "sounds/nameless_4.ogg"
   ]
-  NAMELESS_PATROL_SOUND_PATH = "sounds/nameless_patrol.wav"
+  NAMELESS_PATROL_SOUND_PATH = "sounds/nameless_patrol.ogg"
   NAMELESS_GAIN = 1.0
   NAMELESS_PITCH = 1.0
   NAMELESS_PITCH_SPREAD = 0.2

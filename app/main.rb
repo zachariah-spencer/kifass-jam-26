@@ -11,6 +11,8 @@ def tick args
   $root_scene ||= RootScene.new
   $root_scene.args = args
   $root_scene.tick
+
+  args.outputs.watch "#{args.audio.keys.length}"
 end
 
 def reset args

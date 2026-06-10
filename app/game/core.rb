@@ -26,7 +26,7 @@ class Game
   SCRAMBLE_SOUND_PATH = "sounds/scramble.ogg"
   SCRAMBLE_GAIN = 1.0
   NOTIFICATION_SOUND_PATH = "sounds/notification.ogg"
-  NOTIFICATION_GAIN = 0.4
+  NOTIFICATION_GAIN = 0.2
   ALTAR_CRASHING_SOUND_PATH = "sounds/altar_crashing.ogg"
   ALTAR_CRASHING_GAIN = 50.0
   WORD_EVENT_SOUND_GAIN = 1.0

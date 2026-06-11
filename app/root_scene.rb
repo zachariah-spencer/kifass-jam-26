@@ -31,6 +31,7 @@ class RootScene
   def defaults
     args.state.scene ||= :title
     args.state.scene_changed_at ||= Kernel.tick_count
+    args.state.master_volume = 1.0 if args.state.master_volume.nil?
   end
 
   def tick
@@ -49,6 +50,7 @@ class RootScene
 
     start_scene_transition if args.state.next_scene && !args.state.scene_transition
     update_music
+    apply_master_volume
     render_transition
   end
 
@@ -138,6 +140,7 @@ class RootScene
     args.audio[args.state.active_music_key] = {
       input: MENU_MUSIC_PATH,
       looping: true,
+      base_gain: 0.0,
       gain: 0.0
     }
     args.state.current_music_input = MENU_MUSIC_PATH
@@ -150,11 +153,11 @@ class RootScene
     return unless music
 
     args.state.ending_escaped_music_fade_out_started_at ||= Kernel.tick_count
-    args.state.ending_escaped_music_fade_out_from_gain ||= music.gain || 0.0
+    args.state.ending_escaped_music_fade_out_from_gain ||= audio_base_gain(music)
     progress = ((Kernel.tick_count - args.state.ending_escaped_music_fade_out_started_at).to_f / MUSIC_CROSSFADE_FRAMES).clamp(0.0, 1.0)
 
     from_gain = args.state.ending_escaped_music_fade_out_from_gain || 0.0
-    music.gain = (from_gain * (1.0 - progress)).clamp(0.0, from_gain)
+    set_audio_base_gain(music, (from_gain * (1.0 - progress)).clamp(0.0, from_gain))
     return if progress < 1.0
 
     args.audio.delete(Game::ENDING_ESCAPED_MUSIC_KEY)
@@ -166,7 +169,8 @@ class RootScene
     args.audio[args.state.active_music_key] = {
       input: input,
       looping: true,
-      gain: MUSIC_GAIN
+      base_gain: MUSIC_GAIN,
+      gain: MUSIC_GAIN * master_volume
     }
     args.state.current_music_input = input
   end
@@ -179,6 +183,7 @@ class RootScene
     args.audio[new_key] = {
       input: input,
       looping: true,
+      base_gain: 0.0,
       gain: 0.0
     }
     args.state.previous_music_key = old_key
@@ -195,8 +200,8 @@ class RootScene
     active = active_music
     previous = args.audio[args.state.previous_music_key]
 
-    active.gain = (MUSIC_GAIN * progress).clamp(0.0, MUSIC_GAIN) if active
-    previous.gain = (MUSIC_GAIN * (1.0 - progress)).clamp(0.0, MUSIC_GAIN) if previous
+    set_audio_base_gain(active, (MUSIC_GAIN * progress).clamp(0.0, MUSIC_GAIN)) if active
+    set_audio_base_gain(previous, (MUSIC_GAIN * (1.0 - progress)).clamp(0.0, MUSIC_GAIN)) if previous
 
     return if progress < 1.0
 
@@ -234,6 +239,7 @@ class RootScene
     args.audio[CHASE_MUSIC_KEY] = {
       input: CHASE_MUSIC_PATH,
       looping: true,
+      base_gain: 0.0,
       gain: 0.0
     }
     args.state.chase_music_fade_started_at = Kernel.tick_count
@@ -244,7 +250,7 @@ class RootScene
   def set_chase_music_fade_direction direction
     return if args.state.chase_music_fade_direction == direction
 
-    args.state.chase_music_fade_from_gain = chase_music&.gain || 0.0
+    args.state.chase_music_fade_from_gain = audio_base_gain(chase_music)
     args.state.chase_music_fade_started_at = Kernel.tick_count
     args.state.chase_music_fade_direction = direction
   end
@@ -256,15 +262,15 @@ class RootScene
     fade_started_at = args.state.chase_music_fade_started_at || Kernel.tick_count
     progress = ((Kernel.tick_count - fade_started_at).to_f / CHASE_MUSIC_FADE_FRAMES).clamp(0.0, 1.0)
 
-    from_gain = args.state.chase_music_fade_from_gain || music.gain || 0.0
+    from_gain = args.state.chase_music_fade_from_gain || audio_base_gain(music)
     to_gain = args.state.chase_music_fade_direction == :out ? 0.0 : CHASE_MUSIC_GAIN
-    music.gain = (from_gain + (to_gain - from_gain) * progress).clamp(0.0, CHASE_MUSIC_GAIN)
+    set_audio_base_gain(music, (from_gain + (to_gain - from_gain) * progress).clamp(0.0, CHASE_MUSIC_GAIN))
     return if progress < 1.0
 
     if args.state.chase_music_fade_direction == :out
       stop_chase_music
     else
-      args.state.chase_music_fade_from_gain = music.gain
+      args.state.chase_music_fade_from_gain = audio_base_gain(music)
     end
   end
 
@@ -285,6 +291,30 @@ class RootScene
 
   def inactive_music_key
     (MUSIC_KEYS - [args.state.active_music_key]).first
+  end
+
+  def master_volume
+    (args.state.master_volume || 1.0).clamp(0.0, 1.0)
+  end
+
+  def apply_master_volume
+    args.audio.each_value do |audio|
+      set_audio_base_gain(audio, audio_base_gain(audio))
+    end
+  end
+
+  def audio_base_gain audio
+    return 0.0 unless audio
+
+    audio.base_gain = audio.gain || 0.0 if audio.base_gain.nil?
+    audio.base_gain || 0.0
+  end
+
+  def set_audio_base_gain audio, gain
+    return unless audio
+
+    audio.base_gain = gain
+    audio.gain = gain * master_volume
   end
 
   def render_transition

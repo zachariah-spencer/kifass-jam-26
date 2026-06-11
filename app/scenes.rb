@@ -32,6 +32,10 @@ class BaseScene
 end
 
 class TitleScene < BaseScene
+  VOLUME_TRACK = { x: 490, y: 208, w: 300, h: 6 }
+  VOLUME_HITBOX = { x: 470, y: 190, w: 340, h: 40 }
+  VOLUME_THUMB_SIZE = 18
+
   def id
     :title
   end
@@ -40,7 +44,8 @@ class TitleScene < BaseScene
     render
     return unless accepts_input?
 
-    if args.inputs.keyboard.key_down.e || args.inputs.keyboard.key_down.enter || args.inputs.mouse.click
+    volume_input = update_volume_slider
+    if args.inputs.keyboard.key_down.e || args.inputs.keyboard.key_down.enter || (args.inputs.mouse.click && !volume_input)
       @game.play_button_click_sound(args)
       @game.restart
       args.state.next_scene = :name_entry
@@ -52,6 +57,7 @@ class TitleScene < BaseScene
     args.outputs.sprites << Render.fullscreen(:stone)
     args.outputs.labels << Render.label(640, 550, "EPITHET", :ash, size_enum: 128, alignment_enum: 1, a: alpha)
     args.outputs.labels << Render.label(640, 284, "E / Enter / Click to begin", :ash, size_enum: 2, alignment_enum: 1, a: alpha)
+    render_volume_slider(alpha)
     args.outputs.labels << Render.label(620, 52, "Tap and Drag to Move                  Tap to Interact", :ash, size_enum: -1, alignment_enum: 1, a: alpha)
   end
 
@@ -60,6 +66,74 @@ class TitleScene < BaseScene
 
     elapsed = Kernel.tick_count - args.state.scene_changed_at
     (elapsed * 255 / Render::TRANSITION_FRAMES).clamp(0, 255)
+  end
+
+  def update_volume_slider
+    mouse = args.inputs.mouse
+    point = slider_input_point(mouse)
+    was_dragging = !!args.state.volume_slider_dragging
+    started_on_slider = point && point_inside_rect?(point, VOLUME_HITBOX)
+    args.state.volume_slider_dragging = true if started_on_slider && mouse_down?(mouse)
+
+    dragging = args.state.volume_slider_dragging && (mouse_held?(mouse) || mouse_up?(mouse))
+    if started_on_slider || dragging
+      update_master_volume_from_point(point || mouse)
+    end
+
+    args.state.volume_slider_dragging = false if mouse_up?(mouse)
+    started_on_slider || dragging || was_dragging
+  end
+
+  def render_volume_slider alpha
+    track = VOLUME_TRACK
+    volume = master_volume
+    fill_w = (track[:w] * volume).round
+    thumb_x = track[:x] + fill_w
+    thumb = {
+      x: thumb_x - VOLUME_THUMB_SIZE / 2,
+      y: track[:y] + track[:h] / 2 - VOLUME_THUMB_SIZE / 2,
+      w: VOLUME_THUMB_SIZE,
+      h: VOLUME_THUMB_SIZE
+    }
+
+    args.outputs.labels << Render.label(490, 236, "VOLUME", :ash, size_enum: -1, a: alpha)
+    args.outputs.labels << Render.label(790, 236, "#{(volume * 100).round}%", :ash, size_enum: -1, alignment_enum: 2, a: alpha)
+    args.outputs.sprites << Render.solid(track, :wall, a: (180 * alpha / 255).clamp(0, 255))
+    args.outputs.sprites << Render.solid(track.merge(w: fill_w), :ash, a: (180 * alpha / 255).clamp(0, 255))
+    args.outputs.sprites << Render.solid(thumb, :ash, a: alpha)
+  end
+
+  def update_master_volume_from_point point
+    track = VOLUME_TRACK
+    args.state.master_volume = ((point.x - track[:x]).to_f / track[:w]).clamp(0.0, 1.0)
+  end
+
+  def master_volume
+    (args.state.master_volume || 1.0).clamp(0.0, 1.0)
+  end
+
+  def slider_input_point mouse
+    mouse.down || mouse.held || mouse.click || mouse.up
+  end
+
+  def mouse_down? mouse
+    mouse.down || mouse.key_down.left
+  end
+
+  def mouse_held? mouse
+    mouse.held || mouse.key_held.left
+  end
+
+  def mouse_up? mouse
+    mouse.up || mouse.key_up.left
+  end
+
+  def point_inside_rect? point, rect
+    return false unless point
+
+    point_x = point.x || point[:x]
+    point_y = point.y || point[:y]
+    point_x >= rect[:x] && point_x <= rect[:x] + rect[:w] && point_y >= rect[:y] && point_y <= rect[:y] + rect[:h]
   end
 end
 

@@ -212,13 +212,14 @@ class Game
     @ending_escaped_music_started_at ||= Kernel.tick_count
     elapsed = Kernel.tick_count - @ending_escaped_music_started_at
     progress = (elapsed.to_f / ENDING_ESCAPED_MUSIC_FADE_FRAMES).clamp(0.0, 1.0)
-    music.gain = (ENDING_ESCAPED_MUSIC_GAIN * progress).clamp(0.0, ENDING_ESCAPED_MUSIC_GAIN)
+    music.base_gain = (ENDING_ESCAPED_MUSIC_GAIN * progress).clamp(0.0, ENDING_ESCAPED_MUSIC_GAIN)
   end
 
   def start_ending_escaped_music args
     @ending_escaped_music_started_at = Kernel.tick_count
     args.audio[ENDING_ESCAPED_MUSIC_KEY] = {
       input: ENDING_ESCAPED_MUSIC_PATH,
+      base_gain: 0.0,
       gain: 0.0,
       looping: true
     }

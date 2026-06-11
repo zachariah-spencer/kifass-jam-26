@@ -40,6 +40,7 @@ class Game
     pitch = FOOTSTEP_PITCH_MIN + rand * (FOOTSTEP_PITCH_MAX - FOOTSTEP_PITCH_MIN)
     args.audio[:"footstep_#{@footstep_audio_index}"] = {
       input: FOOTSTEP_SOUND_PATH,
+      base_gain: FOOTSTEP_GAIN.to_f,
       gain: FOOTSTEP_GAIN.to_f,
       pitch: pitch,
       looping: false
@@ -88,6 +89,7 @@ class Game
     pitch = TYPING_PITCH_MIN + rand * (TYPING_PITCH_MAX - TYPING_PITCH_MIN)
     args.audio[:"typing_#{@typing_audio_index}"] = {
       input: TYPING_SOUND_PATH,
+      base_gain: TYPING_GAIN.to_f,
       gain: TYPING_GAIN.to_f,
       pitch: pitch,
       looping: false
@@ -99,6 +101,7 @@ class Game
     pitch = BUTTON_CLICK_PITCH_MIN + rand * (BUTTON_CLICK_PITCH_MAX - BUTTON_CLICK_PITCH_MIN)
     args.audio[:"button_click_#{@button_click_audio_index}"] = {
       input: TYPING_SOUND_PATH,
+      base_gain: BUTTON_CLICK_GAIN.to_f,
       gain: BUTTON_CLICK_GAIN.to_f,
       pitch: pitch,
       looping: false
@@ -109,6 +112,7 @@ class Game
     @scramble_audio_index += 1
     args.audio[:"scramble_#{@scramble_audio_index}"] = {
       input: SCRAMBLE_SOUND_PATH,
+      base_gain: SCRAMBLE_GAIN.to_f,
       gain: SCRAMBLE_GAIN.to_f,
       looping: false
     }
@@ -118,6 +122,7 @@ class Game
     @notification_audio_index += 1
     args.audio[:"notification_#{@notification_audio_index}"] = {
       input: NOTIFICATION_SOUND_PATH,
+      base_gain: NOTIFICATION_GAIN.to_f,
       gain: NOTIFICATION_GAIN.to_f,
       looping: false
     }
@@ -127,6 +132,7 @@ class Game
     @altar_crashing_audio_index += 1
     args.audio[:"altar_crashing_#{@altar_crashing_audio_index}"] = {
       input: ALTAR_CRASHING_SOUND_PATH,
+      base_gain: ALTAR_CRASHING_GAIN.to_f,
       gain: ALTAR_CRASHING_GAIN.to_f,
       looping: false
     }
@@ -140,6 +146,7 @@ class Game
     @word_event_audio_index += 1
     args.audio[:"word_event_#{@word_event_audio_index}"] = {
       input: sound_path,
+      base_gain: word_event_sound_gain(word).to_f,
       gain: word_event_sound_gain(word).to_f,
       looping: false
     }
@@ -153,6 +160,7 @@ class Game
     @nameless_audio_index += 1
     args.audio[:"nameless_#{@nameless_audio_index}"] = {
       input: input || NAMELESS_SOUND_PATHS[rand(NAMELESS_SOUND_PATHS.length)],
+      base_gain: NAMELESS_GAIN.to_f,
       gain: NAMELESS_GAIN.to_f,
       pitch: nameless_pitch(high_pitch),
       looping: false
